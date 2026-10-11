@@ -194,7 +194,10 @@ PLOT_MODE_RULES = {
 }
 
 def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> str:
-    """genre_traitsとplot_modeを反映した動的システムプロンプトを生成する。"""
+    """genre_traitsとplot_modeを反映した動的システムプロンプトを生成する。
+    strongモードではビート注入方式を使うため、【反転】【失敗・挫折】【重要選択】【思い込みと真実】節は除外する。
+    """
+    _beat_injection_mode = (plot_mode == "strong")
     traits = plot.get("genre_traits", {})
     lines = [SYSTEM_GM_BASE]
 
@@ -276,28 +279,30 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append(f"- 着地点: {ending}")
             lines.append("- 着地点に含まれる主要人物・場面がまだ物語に登場していない間は、エンディングにしない")
 
-        choices = plot.get("choices", [])
-        if choices and isinstance(choices, list):
-            lines.append("")
-            lines.append("【重要選択】")
-            for c in choices:
-                if isinstance(c, dict):
-                    lines.append(
-                        f"- {c.get('timing','')}: "
-                        f"{c.get('description','')} "
-                        f"(代償: {c.get('cost','')})"
-                    )
+        if not _beat_injection_mode:
+            choices = plot.get("choices", [])
+            if choices and isinstance(choices, list):
+                lines.append("")
+                lines.append("【重要選択】")
+                for c in choices:
+                    if isinstance(c, dict):
+                        lines.append(
+                            f"- {c.get('timing','')}: "
+                            f"{c.get('description','')} "
+                            f"(代償: {c.get('cost','')})"
+                        )
 
-        twists = plot.get("twists", [])
-        if twists and isinstance(twists, list):
-            lines.append("")
-            lines.append("【反転】（タイミング通りに発生させること）")
-            for t in twists:
-                if isinstance(t, dict):
-                    lines.append(
-                        f"- {t.get('timing','')}: "
-                        f"{t.get('content','')}"
-                    )
+        if not _beat_injection_mode:
+            twists = plot.get("twists", [])
+            if twists and isinstance(twists, list):
+                lines.append("")
+                lines.append("【反転】（タイミング通りに発生させること）")
+                for t in twists:
+                    if isinstance(t, dict):
+                        lines.append(
+                            f"- {t.get('timing','')}: "
+                            f"{t.get('content','')}"
+                        )
 
         climax = plot.get("climax", {})
         if climax:
@@ -353,25 +358,27 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
                         f"- {c.get('type','')}: {c.get('content','')}"
                     )
 
-        failures = plot.get("failures", [])
-        if failures and isinstance(failures, list):
-            lines.append("")
-            lines.append("【失敗・挫折】（タイミング通りに発生させること）")
-            for f in failures:
-                if isinstance(f, dict):
-                    lines.append(
-                        f"- {f.get('timing','')}: {f.get('content','')}"
-                    )
+        if not _beat_injection_mode:
+            failures = plot.get("failures", [])
+            if failures and isinstance(failures, list):
+                lines.append("")
+                lines.append("【失敗・挫折】（タイミング通りに発生させること）")
+                for f in failures:
+                    if isinstance(f, dict):
+                        lines.append(
+                            f"- {f.get('timing','')}: {f.get('content','')}"
+                        )
 
-        misconceptions = plot.get("misconceptions", [])
-        if misconceptions and isinstance(misconceptions, list):
-            lines.append("")
-            lines.append("【思い込みと真実】")
-            for m in misconceptions:
-                if isinstance(m, dict):
-                    lines.append(
-                        f"- {m.get('timing','')}: {m.get('content','')}"
-                    )
+        if not _beat_injection_mode:
+            misconceptions = plot.get("misconceptions", [])
+            if misconceptions and isinstance(misconceptions, list):
+                lines.append("")
+                lines.append("【思い込みと真実】")
+                for m in misconceptions:
+                    if isinstance(m, dict):
+                        lines.append(
+                            f"- {m.get('timing','')}: {m.get('content','')}"
+                        )
 
         risks = plot.get("risks", {})
         if risks:

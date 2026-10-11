@@ -16,6 +16,9 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "use_dice": True,
         "difficulty_preset": "normal",
         "summary": "",
+        "beat_queue": [],
+        "beat_ptr": 0,
+        "ending_suppressed": False,
     }
 
 def get() -> dict:

@@ -12,6 +12,7 @@ from api import chat
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message
 import dice as dice_mod
+import beat as beat_mod
 
 COMMANDS = {
     "/save": "セーブ",
@@ -52,11 +53,40 @@ def call_gm(messages: list, max_retries: int = 1) -> str:
         reply = chat(messages)
         attempt += 1
     if not reply.startswith("[ERROR"):
+        reply = beat_mod.filter_output(reply)
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
         gm_print(reply)
     return reply
+
+
+def _is_strong() -> bool:
+    return state.get_plot_mode() == "strong"
+
+
+def _build_api_messages(h: list) -> list:
+    """strongモードならビート注入版、それ以外は通常版でAPI用メッセージを返す。"""
+    if _is_strong():
+        s = state.get()
+        queue = s.get("beat_queue", [])
+        ptr = s.get("beat_ptr", 0)
+        msgs, debug = hist.build_for_api_with_beat(h, queue, ptr)
+        if debug:
+            print(debug, file=sys.stderr)
+        return msgs
+    return hist.build_for_api(h)
+
+
+def _after_reply(reply: str) -> None:
+    """strongモード: GM応答後にビートポインタを進める。"""
+    if not _is_strong():
+        return
+    s = state.get()
+    queue = s.get("beat_queue", [])
+    ptr = s.get("beat_ptr", 0)
+    queue, ptr = beat_mod.advance(queue, ptr, reply)
+    state.update({"beat_queue": queue, "beat_ptr": ptr})
 
 def check_ending(reply: str) -> bool:
     return ENDING_MARKER in reply
@@ -130,6 +160,11 @@ def start_new_game() -> tuple[list, str, str]:
     state.init(genre, title, plot, plot_mode)
     state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset})
 
+    if plot_mode == "strong" and plot:
+        queue = beat_mod.build_queue(plot)
+        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False})
+        print(f"[BEAT] queue built: {len(queue)} beats", file=sys.stderr)
+
     h = hist.new_history(plot, plot_mode, genre)
     start_msg = build_start_message(genre, title, plot)
     h = hist.add_user(h, start_msg)
@@ -139,11 +174,12 @@ def start_new_game() -> tuple[list, str, str]:
     system_print("行き詰まったら /hint で行動候補を表示できます。")
     print()
 
-    reply = call_gm(hist.build_for_api(h))
+    reply = call_gm(_build_api_messages(h))
     if reply.startswith("[ERROR"):
         error_print("応答生成に失敗しました。/retryで再試行できます。")
     else:
         h = hist.add_assistant(h, reply)
+        _after_reply(reply)
 
     return h, genre, title
 
@@ -172,6 +208,12 @@ def resume_game() -> tuple[list, str, str] | None:
     plot = s.get("plot", {})
     plot_mode = s.get("plot_mode", "off")
     dice_mod.set_difficulty_preset(s.get("difficulty_preset", "normal"))
+
+    # 旧セーブにbeat_queueがない場合は再構築
+    if plot_mode == "strong" and plot and not s.get("beat_queue"):
+        queue = beat_mod.build_queue(plot)
+        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False})
+        print(f"[BEAT] queue rebuilt on load: {len(queue)} beats", file=sys.stderr)
     title = s.get("title", "")
     genre = s.get("genre", "")
     h = hist.rebuild_system(h, plot, plot_mode, genre)
@@ -281,13 +323,14 @@ def main():
             # そのuserメッセージ（ダイス結果込み）をそのまま再利用する。
             if h and h[-1]["role"] == "assistant":
                 h.pop()
-            reply = call_gm(hist.build_for_api(h))
+            reply = call_gm(_build_api_messages(h))
             if reply.startswith("[ERROR"):
                 error_print("応答生成に失敗しました。/retryで再試行できます。")
                 pending_failed = True
                 continue
             pending_failed = False
             h = hist.add_assistant(h, reply)
+            _after_reply(reply)
             if check_ending(reply):
                 h, quit_ = handle_ending(h)
                 if quit_:
@@ -300,13 +343,14 @@ def main():
 
         if action in ("/next", "/n"):
             h = push_user(h, "（プレイヤーは静かに見守っている。物語を自然に進めてください。）", pending_failed)
-            reply = call_gm(hist.build_for_api(h))
+            reply = call_gm(_build_api_messages(h))
             if reply.startswith("[ERROR"):
                 error_print("応答生成に失敗しました。/retryで再試行できます。")
                 pending_failed = True
                 continue
             pending_failed = False
             h = hist.add_assistant(h, reply)
+            _after_reply(reply)
             if check_ending(reply):
                 h, quit_ = handle_ending(h)
                 if quit_:
@@ -330,7 +374,7 @@ def main():
             user_msg = action
         h = push_user(h, user_msg, pending_failed)
 
-        reply = call_gm(hist.build_for_api(h))
+        reply = call_gm(_build_api_messages(h))
 
         if reply.startswith("[ERROR"):
             error_print("応答生成に失敗しました。/retryで再試行できます。")
@@ -341,8 +385,21 @@ def main():
 
         pending_failed = False
         h = hist.add_assistant(h, reply)
+        _after_reply(reply)
 
         if check_ending(reply):
+            # strongモードのエンディング早出し抑止
+            if _is_strong() and not state.get().get("ending_suppressed", False):
+                s = state.get()
+                queue = s.get("beat_queue", [])
+                ptr = s.get("beat_ptr", 0)
+                queue, ptr, suppressed = beat_mod.handle_ending_suppression(queue, ptr)
+                if suppressed:
+                    state.update({"beat_queue": queue, "beat_ptr": ptr, "ending_suppressed": True})
+                    # エンディングマーカーを除いて続行
+                    h[-1] = {"role": "assistant", "content": h[-1]["content"].replace(ENDING_MARKER, "").strip()}
+                    continue
+
             h, quit_ = handle_ending(h)
             if quit_:
                 break

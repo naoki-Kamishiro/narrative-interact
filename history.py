@@ -1,4 +1,5 @@
 from prompt import build_system_prompt
+import beat as beat_mod
 
 def new_history(plot: dict = {}, plot_mode: str = "off", genre: str = "") -> list:
     return [{"role": "system", "content": build_system_prompt(plot, plot_mode, genre)}]
@@ -28,6 +29,15 @@ def sanitize(history: list) -> list:
 
 def build_for_api(history: list) -> list:
     return sanitize(history)
+
+def build_for_api_with_beat(history: list, queue: list, ptr: int) -> tuple[list, str | None]:
+    """
+    strongモード用: sanitize後にビートを注入してAPI用メッセージを返す。
+    戻り値: (注入済みメッセージリスト, デバッグ情報 or None)
+    """
+    msgs = sanitize(history)
+    return beat_mod.inject(msgs, queue, ptr)
+
 
 def rebuild_system(history: list, plot: dict, plot_mode: str = "off", genre: str = "") -> list:
     """ロード時にシステムプロンプトをプロットで再構築する。"""
