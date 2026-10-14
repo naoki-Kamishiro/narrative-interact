@@ -91,9 +91,11 @@ pip install -r requirements.txt
 ```python
 # config.py
 LM_STUDIO_URL = "http://localhost:1234/v1"  # LM StudioのデフォルトURL
-MAX_TOKENS    = 16384                        # モデルのコンテキスト長に合わせて設定
+MAX_TOKENS    = 16384                        # 1ターンあたりの最大出力トークン数
 TEMPERATURE   = 0.85
 ```
+
+コンテキスト長（32,768トークン以上を推奨）はLM Studio側のモデル設定で変更すること。
 
 ---
 
