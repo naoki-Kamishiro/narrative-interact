@@ -53,7 +53,7 @@ def chat(messages: list) -> str:
         t.join()
 
 def chat_player(gm_response: str, system_prompt: str) -> str:
-    """プレイヤーLLM（ポート1235）にGM応答を渡して行動を生成する。"""
+    """プレイヤーLLMにGM応答を渡して行動を生成する（自動プレイ用）。"""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user",   "content": gm_response},
