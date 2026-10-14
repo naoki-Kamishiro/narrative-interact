@@ -1,5 +1,7 @@
 # Narrative Interact
 
+[English README is here](README_EN.md)
+
 ローカルLLMで動くインタラクティブフィクションシステム。  
 ジャンルとタイトルを入力するだけで、LLMがGM（ゲームマスター）として物語を自動生成する。プレイヤーは主人公として自由に行動を入力し、その結果に応じてGMが物語を進める。
 
