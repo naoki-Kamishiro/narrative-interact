@@ -8,7 +8,7 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat
+from api import chat, chat_player
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message
 import dice as dice_mod
@@ -18,8 +18,6 @@ COMMANDS = {
     "/save": "セーブ",
     "/load": "ロード",
     "/quit": "セーブせずに終了",
-    "/next": "不介入で物語を進める",
-    "/n":    "不介入で物語を進める",
     "/hint": "行動候補を3〜4つ表示",
     "/retry": "直前のGM応答を再生成",
     "/r":    "直前のGM応答を再生成",
@@ -28,6 +26,40 @@ COMMANDS = {
 }
 
 ENDING_MARKER = "【エンディング】"
+
+# 自動プレイモード（起動引数で設定）
+AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸脱
+
+# デバッグモード（--debug引数で有効）
+DEBUG_MODE: bool = False
+
+PLAYER_SYSTEM_NORMAL = (
+    "あなたはナラティブインタラクトシステムのプレイヤーです。\n"
+    "GMから提示された文章をもとに行動を改行なしで出力します。\n"
+    "主人公として臨機応変に行動してください。\n"
+    "「」を使わず生テキストのみセリフではなく行動を出力してください。\n"
+    "行動に心情は出力しない事。\n"
+    "行動に余計な装飾はしない事。\n"
+    "端的に行動を描写する事。\n"
+    "行動をいくつも一度にしない事。\n"
+    "直前と同じ対象・同じ動作の組み合わせを繰り返してはならない。\n"
+    "同じ場所で同種の行動が3回続いたら、別の場所へ移動する行動を取ること。\n"
+    "エンディングと表示されたら終了してください。"
+)
+
+PLAYER_SYSTEM_DEVIATE = (
+    "あなたはナラティブインタラクトシステムのプレイヤーです。\n"
+    "GMから提示された文章をもとに行動を改行なしで出力します。\n"
+    "主人公として逸脱プレイをしてください。\n"
+    "「」を使わず生テキストのみセリフではなく行動を出力してください。\n"
+    "行動に心情は出力しない事。\n"
+    "行動に余計な装飾はしない事。\n"
+    "端的に行動を描写する事。\n"
+    "行動をいくつも一度にしない事。\n"
+    "直前と同じ対象・同じ動作の組み合わせを繰り返してはならない。\n"
+    "同じ場所で同種の行動が3回続いたら、別の場所へ移動する行動を取ること。\n"
+    "エンディングと表示されたら終了してください。"
+)
 
 def show_help():
     hr()
@@ -73,7 +105,67 @@ def _build_api_messages(h: list) -> list:
         ptr = s.get("beat_ptr", 0)
         msgs, debug = hist.build_for_api_with_beat(h, queue, ptr)
         if debug:
-            print(debug, file=sys.stderr)
+            if DEBUG_MODE:
+                print(debug, file=sys.stderr)
+        # キューが枯渇しており、まだエンディング促進をしていない場合
+        if not debug and queue and not s.get("ending_prompted", False):
+            plot = s.get("plot", {})
+            climax_setting = plot.get("climax", {}).get("setting", "")
+            ending = plot.get("ending", "")
+            if climax_setting and ending:
+                injection = (
+                    f"全てのプロット要素が出揃いました。"
+                    f"クライマックスの舞台「{climax_setting}」と着地点「{ending}」に向けて、"
+                    f"プレイヤーの行動に応じて物語を一歩進めてください。"
+                    f"物語が自然に完結した場合は、最後の1行に「【エンディング】」とのみ出力すること。"
+                )
+            else:
+                injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+            msgs = [dict(m) for m in msgs]
+            for i in reversed(range(len(msgs))):
+                if msgs[i]["role"] == "user":
+                    msgs[i] = dict(msgs[i])
+                    msgs[i]["content"] = msgs[i]["content"] + f"\n（GMへの場面指示: {injection}）"
+                    break
+            state.update({"ending_prompted": True, "post_prompt_count": 0})
+            if DEBUG_MODE:
+                print("[BEAT] queue exhausted: injecting ending prompt", file=sys.stderr)
+        # ending_prompted後も毎ターンinjectionを強化してGMに圧力をかける
+        elif not debug and queue and s.get("ending_prompted", False):
+            post_count = s.get("post_prompt_count", 0)
+            post_count += 1
+            state.update({"post_prompt_count": post_count})
+            plot = s.get("plot", {})
+            climax_setting = plot.get("climax", {}).get("setting", "")
+            ending = plot.get("ending", "")
+            if post_count >= 2:
+                # 2ターン目以降は強制モード
+                if climax_setting and ending:
+                    injection = (
+                        f"【必須】このターンで物語を完結させてください。"
+                        f"プレイヤーが何をしようとも、着地点「{ending}」の結末を迎えます。"
+                        f"新たな障壁や展開を追加せず、必ずこのターンで締めくくること。"
+                        f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
+                    )
+                else:
+                    injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「【エンディング】」とのみ出力してください。"
+            else:
+                # 1ターン目は緩めの再促進
+                if climax_setting and ending:
+                    injection = (
+                        f"着地点「{ending}」に向けて、物語をクロージングへ導いてください。"
+                        f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
+                    )
+                else:
+                    injection = "物語をクロージングへ導いてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+            msgs = [dict(m) for m in msgs]
+            for i in reversed(range(len(msgs))):
+                if msgs[i]["role"] == "user":
+                    msgs[i] = dict(msgs[i])
+                    msgs[i]["content"] = msgs[i]["content"] + f"\n（GMへの場面指示: {injection}）"
+                    break
+            if DEBUG_MODE:
+                print(f"[BEAT] post-ending injection (turn {post_count})", file=sys.stderr)
         return msgs
     return hist.build_for_api(h)
 
@@ -85,8 +177,62 @@ def _after_reply(reply: str) -> None:
     s = state.get()
     queue = s.get("beat_queue", [])
     ptr = s.get("beat_ptr", 0)
+    old_ptr = ptr
     queue, ptr = beat_mod.advance(queue, ptr, reply)
-    state.update({"beat_queue": queue, "beat_ptr": ptr})
+    if ptr != old_ptr:
+        state.update({"beat_queue": queue, "beat_ptr": ptr})
+    else:
+        state.update({"beat_queue": queue, "beat_ptr": ptr})
+
+
+def _build_user_msg(action: str, dice_result: dict | None) -> str:
+    """userメッセージを構築する。ダイス結果を冒頭に置き、行動テキストをその後に。"""
+    if not dice_result:
+        return action
+
+    outcome = "成功" if dice_result["success"] else "失敗"
+    intensity = dice_result.get("intensity", "normal")
+    reason = dice_result.get("reason", "判定")
+    diff = dice_result["difficulty"]
+    roll = dice_result["dice"]
+
+    if dice_result["success"] and intensity == "decisive":
+        inst = (
+            "決定的な成功として描写すること。"
+            "行動の目的を大きく前進させる具体的な結果を示す。"
+            "成功を無効化・矮小化しない。"
+            "この行動がプロットの目標を直接・完全に達成した場合のみエンディングに導いてよい。"
+        )
+    elif dice_result["success"]:
+        inst = (
+            "成功として状況が一歩前進したとして描写すること。"
+            "成功を無効化・矮小化しない。"
+            "この行動がプロットの目標を直接・完全に達成した場合のみエンディングに導いてよい。"
+        )
+    elif intensity == "severe":
+        inst = (
+            "重大な失敗として描写すること。目的は達成できない。"
+            "次の行動で対処可能な小規模な障害を最大1つ発生させる。"
+            "失敗を成功に近い描写にしてはならない。"
+        )
+    else:
+        inst = (
+            "失敗として行動が不成立に終わったとして描写すること。"
+            "失敗した事実を明確にした上で、場面内に存在する別の対象・別のアプローチ・別の人物・音・光など、"
+            "プレイヤーが次に取れる具体的な行動起点を少なくとも一つ描写に含めること。"
+            "失敗を成功に近い描写にしてはならない。"
+        )
+
+    tag = (
+        f"（判定結果: {reason} / 難易度{diff} / 出目{roll} → {outcome}。"
+        f"{inst}"
+        f"判定結果を受けてから、その結果に整合する物語を構築すること。"
+        f"判定結果を地の文に出力しないこと。）"
+    )
+    return f"{action}\n{tag}"
+
+
+
 
 def check_ending(reply: str) -> bool:
     return ENDING_MARKER in reply
@@ -162,7 +308,7 @@ def start_new_game() -> tuple[list, str, str]:
 
     if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
-        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False})
+        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         print(f"[BEAT] queue built: {len(queue)} beats", file=sys.stderr)
 
     h = hist.new_history(plot, plot_mode, genre)
@@ -171,6 +317,11 @@ def start_new_game() -> tuple[list, str, str]:
 
     print()
     print(f"── 「{title}」 開始 ──")
+    protagonist = plot.get("protagonist", {}) if plot else {}
+    if protagonist.get("name"):
+        name = protagonist["name"]
+        print(f"あなたは{name}として、この物語を紡ぎます。")
+        print()
     system_print("行き詰まったら /hint で行動候補を表示できます。")
     print()
 
@@ -181,7 +332,7 @@ def start_new_game() -> tuple[list, str, str]:
         h = hist.add_assistant(h, reply)
         _after_reply(reply)
 
-    return h, genre, title
+    return h, genre, title, reply
 
 def _print_history(h: list) -> None:
     """履歴を順番に表示する。systemメッセージとダイス結果タグは除外。"""
@@ -212,7 +363,7 @@ def resume_game() -> tuple[list, str, str] | None:
     # 旧セーブにbeat_queueがない場合は再構築
     if plot_mode == "strong" and plot and not s.get("beat_queue"):
         queue = beat_mod.build_queue(plot)
-        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False})
+        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         print(f"[BEAT] queue rebuilt on load: {len(queue)} beats", file=sys.stderr)
     title = s.get("title", "")
     genre = s.get("genre", "")
@@ -224,31 +375,61 @@ def resume_game() -> tuple[list, str, str] | None:
 
     return h, genre, title
 
+def save_session_json(h: list, title: str) -> None:
+    """AUTO_PLAYモード用: セッション全体をJSONで保存する。"""
+    import json, datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_title = title.replace(" ", "_").replace("/", "_")
+    filename = f"{safe_title}_{timestamp}.json"
+    data = {
+        "state": state.get(),
+        "history": h,
+    }
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    system_print(f"セッションを保存しました: {filename}")
+
 def handle_ending(h: list) -> tuple[list, bool]:
-    """エンディング後の3択を処理する。戻り値は (履歴, 終了するか)。"""
+    """エンディング後の選択を処理する。戻り値は (履歴, 終了するか)。"""
     system_print("エンディングを迎えました。お疲れさまでした。")
-    print("  1. 終了する")
-    print("  2. エピローグを生成する")
-    print("  3. 物語を続行する")
-    while True:
-        ans = ask("選択 [1/2/3]: ")
-        if ans == "1":
-            return h, True
-        if ans == "2":
-            h = hist.add_user(h, "この物語のエピローグを200字程度で書いてください。意味・テーマ・主人公の変化の総括や説明はせず、主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。")
-            reply = call_gm(hist.build_for_api(h))
-            if reply.startswith("[ERROR"):
-                error_print("エピローグの生成に失敗しました。")
-                h.pop()
-            else:
-                h = hist.add_assistant(h, reply)
-            return h, True
-        if ans == "3":
-            # 続行通知はuserとして追加する。次のプレイヤー入力とは
-            # build_for_api() で連結されるので、入力は失われない。
-            h = hist.add_user(h, "（プレイヤーが続行を選択しました。物語はまだ終わっていません。引き続き状況を描写してください。）")
-            return h, False
-        system_print("1か2か3を入力してください。")
+    if _is_strong():
+        print("  1. 終了する")
+        print("  2. エピローグを生成する")
+        while True:
+            ans = ask("選択 [1/2]: ")
+            if ans == "1":
+                return h, True
+            if ans == "2":
+                h = hist.add_user(h, "この物語のエピローグを200字程度で書いてください。意味・テーマ・主人公の変化の総括や説明はせず、主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」など抽象語は使用しないこと。具体的な動作・場所・物・人物の状態のみで描写すること。")
+                reply = call_gm(hist.build_for_api(h))
+                if reply.startswith("[ERROR"):
+                    error_print("エピローグの生成に失敗しました。")
+                    h.pop()
+                else:
+                    h = hist.add_assistant(h, reply)
+                return h, True
+            system_print("1か2を入力してください。")
+    else:
+        print("  1. 終了する")
+        print("  2. エピローグを生成する")
+        print("  3. 物語を続行する")
+        while True:
+            ans = ask("選択 [1/2/3]: ")
+            if ans == "1":
+                return h, True
+            if ans == "2":
+                h = hist.add_user(h, "この物語のエピローグを200字程度で書いてください。意味・テーマ・主人公の変化の総括や説明はせず、主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」など抽象語は使用しないこと。具体的な動作・場所・物・人物の状態のみで描写すること。")
+                reply = call_gm(hist.build_for_api(h))
+                if reply.startswith("[ERROR"):
+                    error_print("エピローグの生成に失敗しました。")
+                    h.pop()
+                else:
+                    h = hist.add_assistant(h, reply)
+                return h, True
+            if ans == "3":
+                h = hist.add_user(h, "（プレイヤーが続行を選択しました。物語はまだ終わっていません。引き続き状況を描写してください。）")
+                return h, False
+            system_print("1か2か3を入力してください。")
 
 def push_user(h: list, content: str, replace_pending: bool) -> list:
     """userメッセージを追加する。replace_pending=Trueなら、エラーで未応答のまま
@@ -258,10 +439,33 @@ def push_user(h: list, content: str, replace_pending: bool) -> list:
     return hist.add_user(h, content)
 
 def main():
+    global AUTO_PLAY_MODE, DEBUG_MODE
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print("使い方: python main.py [オプション]")
+        print()
+        print("オプション:")
+        print("  --normal    自動プレイ（通常）")
+        print("  --deviate   自動プレイ（逸脱）")
+        print("  --debug     デバッグ出力を有効化（stderrに出力）")
+        print("  --help, -h  このヘルプを表示")
+        sys.exit(0)
+
+    if "--normal" in sys.argv:
+        AUTO_PLAY_MODE = "normal"
+    elif "--deviate" in sys.argv:
+        AUTO_PLAY_MODE = "deviate"
+    # 自動プレイ時は常にデバッグ有効
+    if AUTO_PLAY_MODE or "--debug" in sys.argv:
+        DEBUG_MODE = True
+        beat_mod.DEBUG_MODE = True
+        plot_mod.DEBUG_MODE = True
+
     print()
     print("╔══════════════════════════════════════════╗")
     print("║  ナラティブインタラクト (LM Studio版)    ║")
     print("╚══════════════════════════════════════════╝")
+    if AUTO_PLAY_MODE:
+        print(f"[自動プレイモード: {'通常' if AUTO_PLAY_MODE == 'normal' else '逸脱'}]")
     print()
     print("コマンド一覧は /help または /h")
     print()
@@ -280,6 +484,7 @@ def main():
                 result = resume_game()
                 if result:
                     h, genre, title = result
+                    initial_reply = ""
                 break
             elif ans == "2":
                 save_mod.delete()
@@ -288,13 +493,33 @@ def main():
             system_print("1か2を入力してください。")
 
     if h is None:
-        h, genre, title = start_new_game()
+        h, genre, title, initial_reply = start_new_game()
+    else:
+        initial_reply = ""
 
     # 直前の生成がエラーで、userメッセージが未応答のまま履歴に残っているか
     pending_failed = False
+    last_gm_reply = initial_reply  # 自動プレイ用: 最後のGM応答（初回含む）
 
     while True:
-        action = ask("\nあなたの行動: ")
+        if AUTO_PLAY_MODE:
+            if not last_gm_reply:
+                action = ""
+            else:
+                # ending_prompted後、一定ターンでプレイヤー入力を強制終了に切り替え
+                if _is_strong() and state.get().get("ending_prompted", False) and \
+                        state.get().get("post_prompt_count", 0) >= 3:
+                    action = "（物語を終わらせてください）"
+                    print(f"\nあなたの行動: {action} [システム強制]")
+                else:
+                    sys_prompt = PLAYER_SYSTEM_NORMAL if AUTO_PLAY_MODE == "normal" else PLAYER_SYSTEM_DEVIATE
+                    action = chat_player(last_gm_reply, sys_prompt)
+                    if action.startswith("[ERROR"):
+                        error_print(f"プレイヤーLLMエラー: {action}")
+                        break
+                    print(f"\nあなたの行動: {action}")
+        else:
+            action = ask("\nあなたの行動: ")
 
         if not action:
             continue
@@ -320,7 +545,7 @@ def main():
 
         if action in ("/retry", "/r"):
             # 直前がassistantなら削除して再生成。直前がuser（エラーで未応答）なら
-            # そのuserメッセージ（ダイス結果込み）をそのまま再利用する。
+            # そのuserメッセージをそのまま再利用する。
             if h and h[-1]["role"] == "assistant":
                 h.pop()
             reply = call_gm(_build_api_messages(h))
@@ -341,21 +566,6 @@ def main():
             system_print(f"コマンドにありません: {action}　/help で一覧を確認できます。")
             continue
 
-        if action in ("/next", "/n"):
-            h = push_user(h, "（プレイヤーは静かに見守っている。物語を自然に進めてください。）", pending_failed)
-            reply = call_gm(_build_api_messages(h))
-            if reply.startswith("[ERROR"):
-                error_print("応答生成に失敗しました。/retryで再試行できます。")
-                pending_failed = True
-                continue
-            pending_failed = False
-            h = hist.add_assistant(h, reply)
-            _after_reply(reply)
-            if check_ending(reply):
-                h, quit_ = handle_ending(h)
-                if quit_:
-                    break
-            continue
 
         if action == "/hint":
             hint_msg = hist.build_for_api(h) + [{
@@ -369,9 +579,7 @@ def main():
         dice_result = dice_mod.judge(action, h) if state.get().get("use_dice", True) else None
         if dice_result:
             dice_mod.display_result(dice_result)
-            user_msg = dice_mod.build_user_tag(action, dice_result)
-        else:
-            user_msg = action
+        user_msg = _build_user_msg(action, dice_result)
         h = push_user(h, user_msg, pending_failed)
 
         reply = call_gm(_build_api_messages(h))
@@ -385,6 +593,7 @@ def main():
 
         pending_failed = False
         h = hist.add_assistant(h, reply)
+        last_gm_reply = reply
         _after_reply(reply)
 
         if check_ending(reply):
@@ -400,6 +609,8 @@ def main():
                     h[-1] = {"role": "assistant", "content": h[-1]["content"].replace(ENDING_MARKER, "").strip()}
                     continue
 
+            if AUTO_PLAY_MODE:
+                save_session_json(h, title)
             h, quit_ = handle_ending(h)
             if quit_:
                 break

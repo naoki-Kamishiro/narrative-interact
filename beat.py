@@ -4,6 +4,14 @@
 """
 
 import re
+import sys
+
+# デバッグ出力フラグ（main.pyから beat_mod.DEBUG_MODE = True で有効化）
+DEBUG_MODE: bool = False
+
+def _debug(*args) -> None:
+    if DEBUG_MODE:
+        print(*args, file=sys.stderr)
 
 # timingのソート辞書（表記ゆれ吸収）
 TIMING_ORDER = {
@@ -147,8 +155,21 @@ def inject(messages: list, queue: list, ptr: int) -> tuple[list, str | None]:
 
 
 def detect_character(response: str, name: str) -> bool:
-    """GM応答にキャラクター名が含まれるか照合する。"""
-    return name in response
+    """GM応答にキャラクター名が含まれるか照合する。
+    複合表記（・／（）／または／()）を分割し、各トークンでも照合する。
+    いずれかがresponseに含まれればTrue。
+    """
+    import re
+    if name in response:
+        return True
+    # 区切り文字で分割してトークンを取り出す
+    # 対象: ・ / （〜） / (〜) / または / or
+    tokens = re.split(r'[・／/\s]|または|or|\(.*?\)|（.*?）', name)
+    for token in tokens:
+        token = token.strip()
+        if token and token in response:
+            return True
+    return False
 
 
 def advance(queue: list, ptr: int, response: str) -> tuple[list, int]:
@@ -168,8 +189,7 @@ def advance(queue: list, ptr: int, response: str) -> tuple[list, int]:
             return queue, ptr + 1
         else:
             # 未検出: doneのまま保留、次ターンも再注入
-            import sys
-            print(f"[BEAT] character '{name}' not detected, re-injecting next turn", file=sys.stderr)
+            _debug(f"[BEAT] character '{name}' not detected, re-injecting next turn")
             return queue, ptr
     else:
         # 出来事系は1回注入で信頼して進める
@@ -209,6 +229,5 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
         if queue[i]["type"] != "character":
             queue[i]["done"] = True
 
-    import sys
-    print(f"[BEAT] ending suppressed: {len(pending_chars)} character beat(s) remaining", file=sys.stderr)
+    _debug(f"[BEAT] ending suppressed: {len(pending_chars)} character beat(s) remaining")
     return queue, ptr, True

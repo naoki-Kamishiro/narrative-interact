@@ -5,10 +5,13 @@
 
 import json
 import re
+import sys
 from json_repair import repair_json
 from api import chat_json
 from prompt import SYSTEM_PLOT, build_plot_message
 from display import system_print
+
+DEBUG_MODE: bool = False
 
 MAX_RETRIES = 3
 
@@ -41,7 +44,7 @@ def _parse(raw: str) -> dict:
     try:
         result = json.loads(cleaned)
         if isinstance(result, dict):
-            return result
+            return _validate_and_repair(result)
     except json.JSONDecodeError:
         pass
 
@@ -51,9 +54,85 @@ def _parse(raw: str) -> dict:
         repaired = repair_json(cleaned)
         result = json.loads(repaired)
         if isinstance(result, dict):
-            return result
+            return _validate_and_repair(result)
     except Exception:
         pass
 
     system_print("プロットのJSON解析に失敗しました")
     return {}
+
+
+# choicesの中にネストされうるキー
+_NESTED_KEYS = ("misconceptions", "failures", "twists", "conflicts", "climax", "characters")
+
+def _validate_and_repair(plot: dict) -> dict:
+    """
+    choicesの要素に他のビートキーがネストされている場合、
+    トップレベルに引き上げて構造を修復する。
+    """
+    _TOP_LEVEL_LIST_KEYS = ("misconceptions", "failures", "choices", "twists", "characters")
+
+    extracted: dict[str, list] = {k: [] for k in _NESTED_KEYS}
+    repaired = False
+
+    choices = plot.get("choices", [])
+    clean_choices = []
+    for item in choices:
+        if not isinstance(item, dict):
+            continue
+        nested_found = False
+        for key in _NESTED_KEYS:
+            if key in item and isinstance(item[key], list):
+                extracted[key].extend(item[key])
+                nested_found = True
+        # choiceとして有効なキーが残っているかチェック
+        valid_keys = {"description", "cost", "timing", "outcome", "label", "name", "content"}
+        has_valid = any(k in item for k in valid_keys)
+        if has_valid:
+            # ネストキーを除いたクリーンなchoiceを残す
+            clean_item = {k: v for k, v in item.items() if k not in _NESTED_KEYS}
+            clean_choices.append(clean_item)
+        if nested_found:
+            repaired = True
+
+    if repaired:
+        plot["choices"] = clean_choices
+        for key in _NESTED_KEYS:
+            if extracted[key]:
+                existing = plot.get(key, [])
+                if not isinstance(existing, list):
+                    existing = []
+                plot[key] = existing + extracted[key]
+                if DEBUG_MODE:
+                    print(f"[plot修復] {key} を {len(extracted[key])} 件トップレベルに移動しました", file=sys.stderr)
+
+    # climax・ending・ending_noteの欠落補完
+    if not isinstance(plot.get("climax"), dict):
+        plot["climax"] = {}
+    climax = plot["climax"]
+    # フィールドが全て空の場合、他のplot情報から最低限の内容を補完する
+    if not any(climax.get(k) for k in ("setting", "conflict_type", "loss", "gain", "peak")):
+        protagonist = plot.get("protagonist", {})
+        conflicts = plot.get("conflicts", [])
+        twists = plot.get("twists", [])
+        risks = plot.get("risks", {})
+        main_conflict = next((c.get("content", "") for c in conflicts if isinstance(c, dict) and c.get("type") == "メイン"), "")
+        final_twist = twists[-1].get("content", "") if twists and isinstance(twists[-1], dict) else ""
+        climax["setting"] = climax.get("setting") or "物語の最深部"
+        climax["conflict_type"] = climax.get("conflict_type") or main_conflict or "主要な対立の決着"
+        climax["loss"] = climax.get("loss") or risks.get("identity") or protagonist.get("wound") or ""
+        climax["gain"] = climax.get("gain") or protagonist.get("goal_deep") or ""
+        climax["peak"] = climax.get("peak") or final_twist or "物語の転換点"
+        plot["climax"] = climax
+        if DEBUG_MODE:
+            print("[plot修復] climax が空だったため他フィールドから補完しました", file=sys.stderr)
+    if not plot.get("ending"):
+        plot["ending"] = ""
+        if DEBUG_MODE:
+            print("[plot修復] ending が欠落していたためデフォルト補完しました", file=sys.stderr)
+    if not isinstance(plot.get("ending_note"), dict) or not plot["ending_note"]:
+        plot["ending_note"] = {"hook_resolution": "", "theme_closure": ""}
+        if DEBUG_MODE:
+            print("[plot修復] ending_note が欠落していたためデフォルト補完しました", file=sys.stderr)
+
+    return plot

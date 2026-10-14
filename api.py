@@ -3,13 +3,22 @@ import threading
 import time
 from config import LM_STUDIO_URL, API_KEY, MAX_TOKENS, TEMPERATURE
 
+PLAYER_URL = LM_STUDIO_URL  # GMと同じポートを使用（同一モデルでGM・プレイヤー兼用）
+
 _client: OpenAI | None = None
+_player_client: OpenAI | None = None
 
 def get_client() -> OpenAI:
     global _client
     if _client is None:
         _client = OpenAI(base_url=LM_STUDIO_URL, api_key=API_KEY)
     return _client
+
+def get_player_client() -> OpenAI:
+    global _player_client
+    if _player_client is None:
+        _player_client = OpenAI(base_url=PLAYER_URL, api_key=API_KEY)
+    return _player_client
 
 def _show_progress(stop_event: threading.Event) -> None:
     """生成中にドットを表示するスレッド関数。"""
@@ -42,6 +51,25 @@ def chat(messages: list) -> str:
     finally:
         stop_event.set()
         t.join()
+
+def chat_player(gm_response: str, system_prompt: str) -> str:
+    """プレイヤーLLM（ポート1235）にGM応答を渡して行動を生成する。"""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": gm_response},
+    ]
+    try:
+        client = get_player_client()
+        response = client.chat.completions.create(
+            model="local",
+            messages=messages,
+            max_tokens=200,
+            temperature=0.8,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"[ERROR: {e}]"
+
 
 def chat_json(messages: list) -> str:
     """JSON出力専用。プロット生成など内部処理用。"""
