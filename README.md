@@ -31,7 +31,7 @@ MODEL_ID = "your-model-id"
 # 手動プレイ
 python main.py
 
-# 自動プレイ（プレイヤーもLLMが担当）
+# 自動プレイ（デバッグ用。プレイヤーもLLMが担当）
 python main.py --auto normal    # 通常モード
 python main.py --auto deviate   # 逸脱モード（GM制約を意図的に超える行動）
 
