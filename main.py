@@ -4,6 +4,8 @@
 """
 
 import sys
+import json
+import datetime
 import state
 import history as hist
 import plot as plot_mod
@@ -26,6 +28,14 @@ COMMANDS = {
 }
 
 ENDING_MARKER = "【エンディング】"
+
+EPILOGUE_PROMPT = (
+    "この物語のエピローグを200字程度で書いてください。"
+    "意味・テーマ・主人公の変化の総括や説明はせず、"
+    "主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。"
+    "「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」"
+    "など抽象語は使用しないこと。具体的な動作・場所・物・人物の状態のみで描写すること。"
+)
 
 # 自動プレイモード（起動引数で設定）
 AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸脱
@@ -108,7 +118,8 @@ def _build_api_messages(h: list) -> list:
             if DEBUG_MODE:
                 print(debug, file=sys.stderr)
         # キューが枯渇しており、まだエンディング促進をしていない場合
-        if not debug and queue and not s.get("ending_prompted", False):
+        queue_exhausted = queue and beat_mod.get_current_beat(queue, ptr) is None
+        if not debug and queue_exhausted and not s.get("ending_prompted", False):
             plot = s.get("plot", {})
             climax_setting = plot.get("climax", {}).get("setting", "")
             ending = plot.get("ending", "")
@@ -131,7 +142,7 @@ def _build_api_messages(h: list) -> list:
             if DEBUG_MODE:
                 print("[BEAT] queue exhausted: injecting ending prompt", file=sys.stderr)
         # ending_prompted後も毎ターンinjectionを強化してGMに圧力をかける
-        elif not debug and queue and s.get("ending_prompted", False):
+        elif not debug and queue_exhausted and s.get("ending_prompted", False):
             post_count = s.get("post_prompt_count", 0)
             post_count += 1
             state.update({"post_prompt_count": post_count})
@@ -177,12 +188,8 @@ def _after_reply(reply: str) -> None:
     s = state.get()
     queue = s.get("beat_queue", [])
     ptr = s.get("beat_ptr", 0)
-    old_ptr = ptr
     queue, ptr = beat_mod.advance(queue, ptr, reply)
-    if ptr != old_ptr:
-        state.update({"beat_queue": queue, "beat_ptr": ptr})
-    else:
-        state.update({"beat_queue": queue, "beat_ptr": ptr})
+    state.update({"beat_queue": queue, "beat_ptr": ptr})
 
 
 def _build_user_msg(action: str, dice_result: dict | None) -> str:
@@ -309,7 +316,8 @@ def start_new_game() -> tuple[list, str, str]:
     if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
-        print(f"[BEAT] queue built: {len(queue)} beats", file=sys.stderr)
+        if DEBUG_MODE:
+            print(f"[BEAT] queue built: {len(queue)} beats", file=sys.stderr)
 
     h = hist.new_history(plot, plot_mode, genre)
     start_msg = build_start_message(genre, title, plot)
@@ -364,7 +372,8 @@ def resume_game() -> tuple[list, str, str] | None:
     if plot_mode == "strong" and plot and not s.get("beat_queue"):
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
-        print(f"[BEAT] queue rebuilt on load: {len(queue)} beats", file=sys.stderr)
+        if DEBUG_MODE:
+            print(f"[BEAT] queue rebuilt on load: {len(queue)} beats", file=sys.stderr)
     title = s.get("title", "")
     genre = s.get("genre", "")
     h = hist.rebuild_system(h, plot, plot_mode, genre)
@@ -377,7 +386,6 @@ def resume_game() -> tuple[list, str, str] | None:
 
 def save_session_json(h: list, title: str) -> None:
     """AUTO_PLAYモード用: セッション全体をJSONで保存する。"""
-    import json, datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = title.replace(" ", "_").replace("/", "_")
     filename = f"{safe_title}_{timestamp}.json"
@@ -400,7 +408,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
             if ans == "1":
                 return h, True
             if ans == "2":
-                h = hist.add_user(h, "この物語のエピローグを200字程度で書いてください。意味・テーマ・主人公の変化の総括や説明はせず、主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」など抽象語は使用しないこと。具体的な動作・場所・物・人物の状態のみで描写すること。")
+                h = hist.add_user(h, EPILOGUE_PROMPT)
                 reply = call_gm(hist.build_for_api(h))
                 if reply.startswith("[ERROR"):
                     error_print("エピローグの生成に失敗しました。")
@@ -418,7 +426,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
             if ans == "1":
                 return h, True
             if ans == "2":
-                h = hist.add_user(h, "この物語のエピローグを200字程度で書いてください。意味・テーマ・主人公の変化の総括や説明はせず、主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」など抽象語は使用しないこと。具体的な動作・場所・物・人物の状態のみで描写すること。")
+                h = hist.add_user(h, EPILOGUE_PROMPT)
                 reply = call_gm(hist.build_for_api(h))
                 if reply.startswith("[ERROR"):
                     error_print("エピローグの生成に失敗しました。")

@@ -43,30 +43,30 @@ def build_queue(plot: dict) -> list:
     """プロットからビート待ち行列を生成する。"""
     queue = []
 
-    for item in plot.get("misconceptions", []):
+    for i, item in enumerate(plot.get("misconceptions", [])):
         queue.append({
             "src": "misconceptions",
-            "src_idx": plot["misconceptions"].index(item),
+            "src_idx": i,
             "type": "misconception",
             "timing": item.get("timing", "序盤"),
             "content": item.get("content", ""),
             "done": False,
         })
 
-    for item in plot.get("failures", []):
+    for i, item in enumerate(plot.get("failures", [])):
         queue.append({
             "src": "failures",
-            "src_idx": plot["failures"].index(item),
+            "src_idx": i,
             "type": "failure",
             "timing": item.get("timing", "序盤"),
             "content": item.get("content", ""),
             "done": False,
         })
 
-    for item in plot.get("choices", []):
+    for i, item in enumerate(plot.get("choices", [])):
         queue.append({
             "src": "choices",
-            "src_idx": plot["choices"].index(item),
+            "src_idx": i,
             "type": "choice",
             "timing": item.get("timing", "中盤"),
             "content": item.get("description", ""),
@@ -74,10 +74,10 @@ def build_queue(plot: dict) -> list:
             "done": False,
         })
 
-    for item in plot.get("twists", []):
+    for i, item in enumerate(plot.get("twists", [])):
         queue.append({
             "src": "twists",
-            "src_idx": plot["twists"].index(item),
+            "src_idx": i,
             "type": "twist",
             "timing": item.get("timing", "中盤"),
             "content": item.get("content", ""),
@@ -86,12 +86,12 @@ def build_queue(plot: dict) -> list:
 
     # キャラクター登場ビート（charactersから生成）
     protagonist_name = plot.get("protagonist", {}).get("name", "")
-    for c in plot.get("characters", []):
+    for i, c in enumerate(plot.get("characters", [])):
         name = c.get("name", "").strip(": ").strip()
         if name and name != protagonist_name:
             queue.append({
                 "src": "characters",
-                "src_idx": plot["characters"].index(c),
+                "src_idx": i,
                 "type": "character",
                 "timing": "序盤",
                 "name": name,
@@ -159,7 +159,6 @@ def detect_character(response: str, name: str) -> bool:
     複合表記（・／（）／または／()）を分割し、各トークンでも照合する。
     いずれかがresponseに含まれればTrue。
     """
-    import re
     if name in response:
         return True
     # 区切り文字で分割してトークンを取り出す
