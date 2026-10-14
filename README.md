@@ -15,6 +15,7 @@ LM Studio用インタラクティブフィクションシステム。
 ```bash
 git clone https://github.com/naoki-Kamishiro/narrative-interact.git
 cd narrative-interact
+pip install -r requirements.txt
 ```
 
 `config.py` でLM StudioのエンドポイントとモデルIDを設定する。
