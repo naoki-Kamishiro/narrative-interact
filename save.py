@@ -29,7 +29,8 @@ def load(filepath: str = SAVE_FILE) -> tuple[dict | None, list | None]:
             data = json.load(f)
         version = data.get("version", 0)
         if version != SAVE_VERSION:
-            system_print(f"セーブデータのバージョンが異なります（v{version}）。")
+            error_print(f"セーブデータのバージョンが異なります（v{version} → v{SAVE_VERSION}）。ロードできません。")
+            return None, None
         return data.get("state"), data.get("history")
     except FileNotFoundError:
         return None, None

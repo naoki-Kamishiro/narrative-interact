@@ -585,7 +585,10 @@ def main():
 
         # ダイス判定（use_diceがTrueの場合のみ）
         dice_result = dice_mod.judge(action, h) if state.get().get("use_dice", True) else None
-        if dice_result:
+        if dice_result and dice_result.get("error"):
+            error_print("ダイス判定のAPI呼び出しに失敗しました。判定なしで続行します。")
+            dice_result = None
+        elif dice_result:
             dice_mod.display_result(dice_result)
         user_msg = _build_user_msg(action, dice_result)
         h = push_user(h, user_msg, pending_failed)

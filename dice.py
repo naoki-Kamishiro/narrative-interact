@@ -90,6 +90,9 @@ def judge(action: str, history: list) -> dict | None:
     ]
     raw = chat_json(messages)
 
+    if raw.startswith("[ERROR"):
+        return {"error": True}
+
     try:
         cleaned = re.sub(r"```[a-z]*\n?", "", raw).strip()
         cleaned = re.sub(r"```", "", cleaned).strip()
