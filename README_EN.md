@@ -112,6 +112,8 @@ difficulty = base(9) + risk_value + uncertainty_value + preset_offset
 
 The LLM never outputs a difficulty number directly — this prevents prompt-length bias inflating difficulty.
 
+The actual die roll is `random.randint(1, 20)` in Python. The LLM has no influence over the result — it only classifies the action, never touches the numbers.
+
 ### Beat injection (strong mode)
 
 In strong mode, plot beats are queued at startup. Each turn, the current beat is appended to the GM's user message as a hidden scene directive. The player sees the result in the narration; they never see the directive itself.
