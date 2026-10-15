@@ -420,9 +420,8 @@ def handle_ending(h: list) -> tuple[list, bool]:
     else:
         print("  1. 終了する")
         print("  2. エピローグを生成する")
-        print("  3. 物語を続行する")
         while True:
-            ans = ask("選択 [1/2/3]: ")
+            ans = ask("選択 [1/2]: ")
             if ans == "1":
                 return h, True
             if ans == "2":
@@ -434,10 +433,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
                 else:
                     h = hist.add_assistant(h, reply)
                 return h, True
-            if ans == "3":
-                h = hist.add_user(h, "（プレイヤーが続行を選択しました。物語はまだ終わっていません。引き続き状況を描写してください。）")
-                return h, False
-            system_print("1か2か3を入力してください。")
+            system_print("1か2を入力してください。")
 
 def push_user(h: list, content: str, replace_pending: bool) -> list:
     """userメッセージを追加する。replace_pending=Trueなら、エラーで未応答のまま
