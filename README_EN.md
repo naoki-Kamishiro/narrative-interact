@@ -145,6 +145,13 @@ MIT
 
 ---
 
+## Known issues
+
+- **Auto-play action loops**: The player LLM may repeat actions on the same target by slightly varying the verb (e.g. "grip" → "grip tightly" → "apply force"). A rule requiring the player to switch targets or locations after 3 consecutive actions on the same object has been added to reduce this. Complete suppression depends on the model.
+- **Player LLM inner-state output**: In auto-play mode, the player LLM may output internal actions such as "steel myself" or "accept the situation". A rule requiring all actions to be externally observable (physical, verbal, or movement) has been added to the player prompt.
+
+---
+
 ## Notes
 
 This project is under active development. The GM prompt is currently Japanese-only. English output mode and an English prompt variant are planned.
