@@ -99,7 +99,7 @@ def judge(action: str, history: list) -> dict | None:
         cleaned = re.sub(r"```", "", cleaned).strip()
         data = json.loads(cleaned)
     except Exception:
-        return None
+        return {"error": True}
 
     if not data.get("need_roll", False):
         return None
