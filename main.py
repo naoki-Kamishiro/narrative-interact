@@ -435,7 +435,11 @@ def handle_ending(h: list) -> tuple[list, bool]:
                     h = hist.add_assistant(h, reply)
                 return h, True
             if ans == "3":
-                h = hist.add_user(h, "（プレイヤーが続行を選択しました。物語はまだ終わっていません。引き続き状況を描写してください。）")
+                # エンディングマーカーを履歴から除去してGMの「エンディング後禁止」ルールとの衝突を防ぐ
+                for i in range(len(h) - 1, -1, -1):
+                    if h[i]["role"] == "assistant" and ENDING_MARKER in h[i]["content"]:
+                        h[i] = {"role": "assistant", "content": h[i]["content"].replace(ENDING_MARKER, "").strip()}
+                        break
                 return h, False
             system_print("1か2か3を入力してください。")
 
