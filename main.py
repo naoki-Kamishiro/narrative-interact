@@ -489,24 +489,28 @@ def main():
     h, genre, title = None, "", ""
 
     if save_mod.exists():
-        s, _ = save_mod.load()
-        saved_title = s.get("title", "") if s else ""
-        system_print(f"セーブデータが見つかりました:「{saved_title}」")
-        print("  1. 続きから始める")
-        print("  2. 削除して新しく始める")
-        while True:
-            ans = ask("選択 [1/2]: ")
-            if ans == "1":
-                result = resume_game()
-                if result:
-                    h, genre, title = result
-                    initial_reply = ""
-                break
-            elif ans == "2":
-                save_mod.delete()
-                system_print("セーブデータを削除しました。")
-                break
-            system_print("1か2を入力してください。")
+        if AUTO_PLAY_MODE:
+            save_mod.delete()
+            system_print("自動プレイモード：セーブデータを削除して新規開始します。")
+        else:
+            s, _ = save_mod.load()
+            saved_title = s.get("title", "") if s else ""
+            system_print(f"セーブデータが見つかりました:「{saved_title}」")
+            print("  1. 続きから始める")
+            print("  2. 削除して新しく始める")
+            while True:
+                ans = ask("選択 [1/2]: ")
+                if ans == "1":
+                    result = resume_game()
+                    if result:
+                        h, genre, title = result
+                        initial_reply = ""
+                    break
+                elif ans == "2":
+                    save_mod.delete()
+                    system_print("セーブデータを削除しました。")
+                    break
+                system_print("1か2を入力してください。")
 
     if h is None:
         h, genre, title, initial_reply = start_new_game()
