@@ -109,9 +109,9 @@ TEMPERATURE   = 0.85
 プレイヤー入力もLLMが担当するモード。プロンプト検証・挙動確認に使用する。
 
 ```bash
-python main.py --auto normal    # 通常モード
-python main.py --auto deviate   # 逸脱モード（GM制約を意図的に超える行動）
-python main.py --auto normal --debug  # デバッグ出力あり
+python main.py --normal           # 通常モード
+python main.py --deviate          # 逸脱モード（GM制約を意図的に超える行動）
+python main.py --normal --debug   # デバッグ出力あり
 ```
 
 ---

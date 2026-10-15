@@ -122,13 +122,13 @@ prompt.pyのGMプロンプトは2層構造になっている。新しいルー�
 python main.py
 
 # 自動プレイ（通常モード）
-python main.py --auto normal
+python main.py --normal
 
 # 自動プレイ（逸脱モード）
-python main.py --auto deviate
+python main.py --deviate
 
 # デバッグ出力あり
-python main.py --auto normal --debug
+python main.py --normal --debug
 ```
 
 ---
