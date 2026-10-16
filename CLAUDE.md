@@ -152,8 +152,6 @@ python main.py --normal
 # 自動プレイ（逸脱モード）
 python main.py --deviate
 
-# デバッグ出力あり
-python main.py --normal --debug
 ```
 
 ---
