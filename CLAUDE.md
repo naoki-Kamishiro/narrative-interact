@@ -146,6 +146,9 @@ prompt.pyのGMプロンプトは2層構造になっている。新しいルー�
 # 手動プレイ
 python main.py
 
+# 手動プレイ＋デバッグ出力
+python main.py --debug
+
 # 自動プレイ（通常モード）
 python main.py --normal
 
