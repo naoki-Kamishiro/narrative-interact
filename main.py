@@ -319,7 +319,8 @@ def start_new_game() -> tuple[list, str, str]:
         plot = plot_mod.generate(genre, title)
 
     state.init(genre, title, plot, plot_mode)
-    state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset})
+    state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset,
+                  "auto_play_mode": AUTO_PLAY_MODE or "manual"})
 
     if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
