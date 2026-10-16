@@ -24,12 +24,13 @@ def generate(genre: str, title: str) -> dict:
     for attempt in range(1, MAX_RETRIES + 1):
         raw = chat_json(messages)
         result = _parse(raw)
-        if result:
+        if result and all(result.get(k) for k in ("ending", "protagonist", "characters", "climax")):
             system_print("プロット生成完了")
             _warn_missing_keys(result)
             return result
         if attempt < MAX_RETRIES:
-            system_print(f"再試行中... ({attempt}/{MAX_RETRIES})")
+            missing = [k for k in ("ending", "protagonist", "characters", "climax") if not result.get(k)] if result else ["parse"]
+            system_print(f"再試行中... ({attempt}/{MAX_RETRIES}) 不足: {', '.join(missing)}")
     system_print("プロット生成に失敗しました。プロットなしで続行します。")
     return {}
 
