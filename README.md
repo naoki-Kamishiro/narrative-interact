@@ -95,7 +95,7 @@ pip install -r requirements.txt
 ```python
 # config.py
 LM_STUDIO_URL = "http://localhost:1234/v1"  # LM StudioのデフォルトURL
-MAX_TOKENS    = 16384                        # 1ターンあたりの最大出力トークン数
+MAX_TOKENS    = 1024                         # 1回の生成で出力する最大トークン数
 TEMPERATURE   = 0.85
 ```
 
