@@ -620,9 +620,9 @@ def main():
                     h[-1] = {"role": "assistant", "content": h[-1]["content"].replace(ENDING_MARKER, "").strip()}
                     continue
 
+            h, quit_ = handle_ending(h)
             if AUTO_PLAY_MODE:
                 save_session_json(h, title)
-            h, quit_ = handle_ending(h)
             if quit_:
                 break
 
