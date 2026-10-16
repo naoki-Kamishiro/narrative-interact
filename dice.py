@@ -43,7 +43,7 @@ uncertainty: 行動の結果がどれだけ読みにくいか（low=ほぼ確実
 
 # risk/uncertaintyの組み合わせから難易度を決定論的に算出するテーブル
 _LEVEL_VALUE = {"low": -2, "mid": 0, "high": 2}
-_BASE_DIFFICULTY = 9  # d20で約60%の成功率を基準にする
+_BASE_DIFFICULTY = 7  # d20で約65%の成功率を基準にする
 
 # 難易度プリセット（起動時のプレイヤー選択でオフセットを加える）
 DIFFICULTY_PRESETS = {
@@ -66,7 +66,7 @@ def _determine_intensity(dice: int, difficulty: int) -> str:
     margin = dice - difficulty
     if margin >= 8:
         return "decisive"
-    elif margin >= -3:
+    elif margin >= -6:
         return "normal"
     else:
         return "severe"
