@@ -55,6 +55,7 @@ PLAYER_SYSTEM_NORMAL = (
     "直前と同じ対象・同じ動作の組み合わせを繰り返してはならない。\n"
     "同じ対象への行動が動詞を変えながら3回続いた場合も、別の対象・別の場所への行動に切り替えること。\n"
     "同じ場所で同種の行動が3回続いたら、別の場所へ移動する行動を取ること。\n"
+    "同じ対象への行動が2回連続して失敗した場合は、その対象への行動をやめて別の対象・別の場所に切り替えること。\n"
     "「覚悟を決める」「受け入れる」「気持ちを整理する」のような外から観察できない内面行動は出力しないこと。必ず身体・言葉・移動など外から見える行動で出力すること。\n"
     "物語の世界観に存在しないアイテム・道具・能力を行動に持ち込まないこと。\n"
     "エンディングと表示されたら終了してください。"
@@ -72,6 +73,7 @@ PLAYER_SYSTEM_DEVIATE = (
     "直前と同じ対象・同じ動作の組み合わせを繰り返してはならない。\n"
     "同じ対象への行動が動詞を変えながら3回続いた場合も、別の対象・別の場所への行動に切り替えること。\n"
     "同じ場所で同種の行動が3回続いたら、別の場所へ移動する行動を取ること。\n"
+    "同じ対象への行動が2回連続して失敗した場合は、その対象への行動をやめて別の対象・別の場所に切り替えること。\n"
     "「覚悟を決める」「受け入れる」「気持ちを整理する」のような外から観察できない内面行動は出力しないこと。必ず身体・言葉・移動など外から見える行動で出力すること。\n"
     "物語の世界観に存在しないアイテム・道具・能力を行動に持ち込まないこと。\n"
     "エンディングと表示されたら終了してください。"
@@ -406,40 +408,32 @@ def save_session_json(h: list, title: str) -> None:
 def handle_ending(h: list) -> tuple[list, bool]:
     """エンディング後の選択を処理する。戻り値は (履歴, 終了するか)。"""
     system_print("エンディングを迎えました。お疲れさまでした。")
-    if _is_strong():
-        print("  1. 終了する")
-        print("  2. エピローグを生成する")
-        while True:
-            ans = ask("選択 [1/2]: ")
-            if ans == "1":
-                return h, True
-            if ans == "2":
-                h = hist.add_user(h, EPILOGUE_PROMPT)
-                reply = call_gm(hist.build_for_api(h))
-                if reply.startswith("[ERROR"):
-                    error_print("エピローグの生成に失敗しました。")
-                    h.pop()
-                else:
-                    h = hist.add_assistant(h, reply)
-                return h, True
-            system_print("1か2を入力してください。")
-    else:
-        print("  1. 終了する")
-        print("  2. エピローグを生成する")
-        while True:
-            ans = ask("選択 [1/2]: ")
-            if ans == "1":
-                return h, True
-            if ans == "2":
-                h = hist.add_user(h, EPILOGUE_PROMPT)
-                reply = call_gm(hist.build_for_api(h))
-                if reply.startswith("[ERROR"):
-                    error_print("エピローグの生成に失敗しました。")
-                    h.pop()
-                else:
-                    h = hist.add_assistant(h, reply)
-                return h, True
-            system_print("1か2を入力してください。")
+    if AUTO_PLAY_MODE:
+        # 自動プレイ時はエピローグを自動生成して終了
+        h = hist.add_user(h, EPILOGUE_PROMPT)
+        reply = call_gm(hist.build_for_api(h))
+        if reply.startswith("[ERROR"):
+            error_print("エピローグの生成に失敗しました。")
+            h.pop()
+        else:
+            h = hist.add_assistant(h, reply)
+        return h, True
+    print("  1. 終了する")
+    print("  2. エピローグを生成する")
+    while True:
+        ans = ask("選択 [1/2]: ")
+        if ans == "1":
+            return h, True
+        if ans == "2":
+            h = hist.add_user(h, EPILOGUE_PROMPT)
+            reply = call_gm(hist.build_for_api(h))
+            if reply.startswith("[ERROR"):
+                error_print("エピローグの生成に失敗しました。")
+                h.pop()
+            else:
+                h = hist.add_assistant(h, reply)
+            return h, True
+        system_print("1か2を入力してください。")
 
 def push_user(h: list, content: str, replace_pending: bool) -> list:
     """userメッセージを追加する。replace_pending=Trueなら、エラーで未応答のまま
