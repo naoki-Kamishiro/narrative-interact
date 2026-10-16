@@ -111,7 +111,7 @@ TEMPERATURE   = 0.85
 ```bash
 python main.py --normal           # 通常モード
 python main.py --deviate          # 逸脱モード（GM制約を意図的に超える行動）
-python main.py --normal --debug   # デバッグ出力あり
+python main.py --debug            # 手動プレイ＋デバッグ出力あり
 ```
 
 ---

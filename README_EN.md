@@ -158,7 +158,7 @@ For testing and evaluation, the system can play itself — the player role is al
 ```bash
 python main.py --normal           # auto-play, normal mode
 python main.py --deviate          # auto-play, deviate mode (intentionally pushes against GM constraints)
-python main.py --normal --debug   # with debug output
+python main.py --debug            # manual play with debug output
 ```
 
 ---
