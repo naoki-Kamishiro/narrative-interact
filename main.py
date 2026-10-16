@@ -624,7 +624,7 @@ def main():
                     continue
 
             h, quit_ = handle_ending(h)
-            if AUTO_PLAY_MODE:
+            if AUTO_PLAY_MODE or DEBUG_MODE:
                 save_session_json(h, title)
             if quit_:
                 break
