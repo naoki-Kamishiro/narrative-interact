@@ -55,6 +55,18 @@ pip install -r requirements.txt
 
 Start LM Studio and load a model. Make sure the local server is running on port `1234`.
 
+Edit `config.py` to configure the endpoint:
+
+```python
+# config.py
+LM_STUDIO_URL = "http://localhost:1234/v1"  # Default LM Studio URL
+MAX_TOKENS    = 1024                         # Max tokens per generation
+TEMPERATURE   = 0.85
+```
+
+No model ID is required — LM Studio automatically uses whichever model is currently loaded.  
+Context length (32,768+ tokens recommended) is set on the LM Studio side, not here.
+
 Then run:
 
 ```bash
@@ -161,6 +173,8 @@ MIT
 
 - **Auto-play action loops**: The player LLM may repeat actions on the same target by slightly varying the verb (e.g. "grip" → "grip tightly" → "apply force"). A rule requiring the player to switch targets or locations after 3 consecutive actions on the same object has been added to reduce this. Complete suppression depends on the model.
 - **Player LLM inner-state output**: In auto-play mode, the player LLM may output internal actions such as "steel myself" or "accept the situation". A rule requiring all actions to be externally observable (physical, verbal, or movement) has been added to the player prompt.
+- **Out-of-world items**: The player LLM may introduce items or tools that do not exist in the story's setting (e.g. a gun in a medical horror scenario). A rule prohibiting items outside the established world has been added to the player prompt.
+- **Fixation on failed targets**: In auto-play mode, the player LLM may keep attempting the same target after repeated failures. A rule requiring the player to switch targets after 2 consecutive failures on the same object has been added.
 
 ---
 
