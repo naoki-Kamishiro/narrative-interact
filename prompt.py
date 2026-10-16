@@ -430,6 +430,26 @@ def build_start_message(genre: str, title: str, plot: dict) -> str:
     style = plot.get("style", "")
     style_line = f"文体: {style}\n" if style else ""
 
+    # improvモード（plotが空）のとき、GMが情報要求せず自力で開始できるよう指示する
+    if not plot:
+        return (
+            f"ジャンル: {genre}\n"
+            f"タイトル: {title}\n\n"
+
+            "ゲーム開始シーンを生成してください。\n\n"
+
+            "重要:\n"
+            "- 主人公・登場人物・冒頭の状況はあなたが自由に設定してよい。プレイヤーへの情報確認は行わない\n"
+            "- 主人公を動かしてはいけない\n"
+            "- 主人公に発言させてはいけない\n"
+            "- 主人公の感情を書いてはいけない\n"
+            "- 主人公の目的を決めてはいけない\n"
+            "- NPCと状況だけ描写する\n"
+            "- 世界の状態だけ説明する\n"
+            "- 最後はプレイヤーが自由に行動できる状態で止める\n"
+            "- 主人公の行動を一切決定しない\n"
+        )
+
     return (
         f"ジャンル: {genre}\n"
         f"タイトル: {title}\n"
