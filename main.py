@@ -424,9 +424,8 @@ def handle_ending(h: list) -> tuple[list, bool]:
     else:
         print("  1. 終了する")
         print("  2. エピローグを生成する")
-        print("  3. 物語を続行する")
         while True:
-            ans = ask("選択 [1/2/3]: ")
+            ans = ask("選択 [1/2]: ")
             if ans == "1":
                 return h, True
             if ans == "2":
@@ -438,14 +437,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
                 else:
                     h = hist.add_assistant(h, reply)
                 return h, True
-            if ans == "3":
-                # エンディングマーカーを履歴から除去してGMの「エンディング後禁止」ルールとの衝突を防ぐ
-                for i in range(len(h) - 1, -1, -1):
-                    if h[i]["role"] == "assistant" and ENDING_MARKER in h[i]["content"]:
-                        h[i] = {"role": "assistant", "content": h[i]["content"].replace(ENDING_MARKER, "").strip()}
-                        break
-                return h, False
-            system_print("1か2か3を入力してください。")
+            system_print("1か2を入力してください。")
 
 def push_user(h: list, content: str, replace_pending: bool) -> list:
     """userメッセージを追加する。replace_pending=Trueなら、エラーで未応答のまま
@@ -598,7 +590,7 @@ def main():
         # ダイス判定（use_diceがTrueの場合のみ）
         dice_result = dice_mod.judge(action, h) if state.get().get("use_dice", True) else None
         if dice_result and dice_result.get("error"):
-            error_print("ダイス判定のAPI呼び出しに失敗しました。判定なしで続行します。")
+            error_print("ダイス判定に失敗しました（APIエラーまたはJSON解析失敗）。判定なしで続行します。")
             dice_result = None
         elif dice_result:
             dice_mod.display_result(dice_result)

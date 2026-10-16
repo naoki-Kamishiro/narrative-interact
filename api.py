@@ -81,7 +81,7 @@ def chat_json(messages: list) -> str:
         response = client.chat.completions.create(
             model="local",
             messages=messages,
-            max_tokens=2048,
+            max_tokens=4096,
             temperature=0.5,
         )
         return response.choices[0].message.content.strip()

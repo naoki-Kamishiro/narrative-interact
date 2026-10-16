@@ -26,6 +26,7 @@ def generate(genre: str, title: str) -> dict:
         result = _parse(raw)
         if result:
             system_print("プロット生成完了")
+            _warn_missing_keys(result)
             return result
         if attempt < MAX_RETRIES:
             system_print(f"再試行中... ({attempt}/{MAX_RETRIES})")
@@ -64,6 +65,16 @@ def _parse(raw: str) -> dict:
 
 # choicesの中にネストされうるキー
 _NESTED_KEYS = ("misconceptions", "failures", "twists", "conflicts", "climax", "characters")
+
+_REQUIRED_KEYS = ("ending", "protagonist", "characters", "climax")
+
+def _warn_missing_keys(plot: dict) -> None:
+    """必須キーが空または欠落していた場合に警告を出す。"""
+    for key in _REQUIRED_KEYS:
+        val = plot.get(key)
+        if not val:
+            system_print(f"[警告] プロットの必須キー「{key}」が空です。物語の進行に影響する可能性があります。")
+
 
 def _validate_and_repair(plot: dict) -> dict:
     """
