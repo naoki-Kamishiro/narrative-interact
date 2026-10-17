@@ -52,11 +52,19 @@ def chat(messages: list) -> str:
         stop_event.set()
         t.join()
 
-def chat_player(gm_response: str, system_prompt: str) -> str:
-    """プレイヤーLLMにGM応答を渡して行動を生成する（自動プレイ用）。"""
+def chat_player(gm_response: str, system_prompt: str, recent_actions: list | None = None) -> str:
+    """プレイヤーLLMにGM応答を渡して行動を生成する（自動プレイ用）。
+    recent_actions: 直近のプレイヤー行動リスト（ループ抑止用）。"""
+    user_content = gm_response
+    if recent_actions:
+        actions_text = "\n".join(f"  - {a}" for a in recent_actions)
+        user_content = (
+            f"【直近の自分の行動（繰り返し禁止の参考に）】\n{actions_text}\n\n"
+            f"【現在の状況】\n{gm_response}"
+        )
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user",   "content": gm_response},
+        {"role": "user",   "content": user_content},
     ]
     try:
         client = get_player_client()

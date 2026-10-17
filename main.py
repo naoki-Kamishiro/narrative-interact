@@ -121,6 +121,12 @@ def _is_strong() -> bool:
     return state.get_plot_mode() == "strong"
 
 
+def _get_recent_player_actions(history: list, n: int = 5) -> list[str]:
+    """履歴からプレイヤー（user）の発言を直近n件取得する。"""
+    actions = [m["content"] for m in history if m["role"] == "user"]
+    return actions[-n:] if actions else []
+
+
 def _build_api_messages(h: list) -> list:
     """strongモードならビート注入版、それ以外は通常版でAPI用メッセージを返す。"""
     if _is_strong():
@@ -544,7 +550,8 @@ def main():
                     print(f"\nあなたの行動: {action} [システム強制]")
                 else:
                     sys_prompt = PLAYER_SYSTEM_NORMAL if AUTO_PLAY_MODE == "normal" else PLAYER_SYSTEM_DEVIATE
-                    action = chat_player(last_gm_reply, sys_prompt)
+                    recent_actions = _get_recent_player_actions(h, n=5)
+                    action = chat_player(last_gm_reply, sys_prompt, recent_actions)
                     if action.startswith("[ERROR"):
                         error_print(f"プレイヤーLLMエラー: {action}")
                         break
