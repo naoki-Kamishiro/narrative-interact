@@ -30,7 +30,8 @@ COMMANDS = {
 ENDING_MARKER = "【エンディング】"
 
 EPILOGUE_PROMPT = (
-    "この物語のエピローグを200字程度で書いてください。"
+    "エピローグを200字程度で書いてください。"
+    "（これはエピローグ専用の依頼です。「【エンディング】以降の描写禁止」ルールはエピローグには適用されません。）"
     "意味・テーマ・主人公の変化の総括や説明はせず、"
     "主人公・世界・人物関係の具体的な状態の変化だけを描写して、余韻を残してください。"
     "「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」"
@@ -100,10 +101,13 @@ def ask(prompt: str) -> str:
 def call_gm(messages: list, max_retries: int = 1) -> str:
     reply = chat(messages)
     attempt = 0
-    while reply.startswith("[ERROR") and attempt < max_retries:
+    while (reply.startswith("[ERROR") or not reply.strip()) and attempt < max_retries:
         system_print("応答生成に失敗したため再試行します...")
         reply = chat(messages)
         attempt += 1
+    # 空応答はエラー扱いにする
+    if not reply.strip():
+        return "[ERROR: empty response]"
     if not reply.startswith("[ERROR"):
         reply = beat_mod.filter_output(reply)
         if ENDING_MARKER in reply:
@@ -347,11 +351,14 @@ def start_new_game() -> tuple[list, str, str]:
     reply = call_gm(_build_api_messages(h))
     if reply.startswith("[ERROR"):
         error_print("応答生成に失敗しました。/retryで再試行できます。")
+        # 自動プレイ時: エラー文字列がプレイヤーLLMに渡らないよう空文字にする
+        initial_reply_for_player = ""
     else:
         h = hist.add_assistant(h, reply)
         _after_reply(reply)
+        initial_reply_for_player = reply
 
-    return h, genre, title, reply
+    return h, genre, title, initial_reply_for_player
 
 def _print_history(h: list) -> None:
     """履歴を順番に表示する。systemメッセージとダイス結果タグは除外。"""
@@ -398,7 +405,10 @@ def resume_game() -> tuple[list, str, str] | None:
 def save_session_json(h: list, title: str) -> None:
     """AUTO_PLAYモード用: セッション全体をJSONで保存する。"""
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_title = title.replace(" ", "_").replace("/", "_")
+    # Windows/Linux共通で問題になる文字を全て除去
+    import re as _re
+    safe_title = _re.sub(r'[\\/:*?"<>|\s]', "_", title)
+    safe_title = safe_title.strip("_") or "session"
     filename = f"{safe_title}_{timestamp}.json"
     data = {
         "state": state.get(),
@@ -505,15 +515,25 @@ def main():
 
     if h is None:
         h, genre, title, initial_reply = start_new_game()
+        # 初回生成が失敗した場合（空文字）はpending_failedをTrueに
+        pending_failed = (initial_reply == "")
     else:
         initial_reply = ""
+        pending_failed = False
 
-    # 直前の生成がエラーで、userメッセージが未応答のまま履歴に残っているか
-    pending_failed = False
     last_gm_reply = initial_reply  # 自動プレイ用: 最後のGM応答（初回含む）
+    auto_play_turn = 0  # 自動プレイのターンカウンタ
+    AUTO_PLAY_MAX_TURNS = 60  # 自動プレイの最大ターン数
 
     while True:
         if AUTO_PLAY_MODE:
+            # ターン上限チェック
+            auto_play_turn += 1
+            if auto_play_turn > AUTO_PLAY_MAX_TURNS:
+                system_print(f"自動プレイのターン上限（{AUTO_PLAY_MAX_TURNS}ターン）に達しました。終了します。")
+                if DEBUG_MODE:
+                    save_session_json(h, title)
+                break
             if not last_gm_reply:
                 action = ""
             else:
@@ -557,8 +577,21 @@ def main():
         if action in ("/retry", "/r"):
             # 直前がassistantなら削除して再生成。直前がuser（エラーで未応答）なら
             # そのuserメッセージをそのまま再利用する。
-            if h and h[-1]["role"] == "assistant":
+            retrying_assistant = h and h[-1]["role"] == "assistant"
+            if retrying_assistant:
                 h.pop()
+                # strongモード: 直前の_after_reply()で進んだptrを1つ戻す
+                if _is_strong():
+                    s = state.get()
+                    ptr = s.get("beat_ptr", 0)
+                    if ptr > 0:
+                        new_ptr = ptr - 1
+                        # 戻した位置のdoneをFalseに戻す
+                        queue = s.get("beat_queue", [])
+                        if new_ptr < len(queue) and queue[new_ptr]["done"]:
+                            queue[new_ptr] = dict(queue[new_ptr])
+                            queue[new_ptr]["done"] = False
+                        state.update({"beat_ptr": new_ptr, "beat_queue": queue})
             reply = call_gm(_build_api_messages(h))
             if reply.startswith("[ERROR"):
                 error_print("応答生成に失敗しました。/retryで再試行できます。")
@@ -568,7 +601,20 @@ def main():
             h = hist.add_assistant(h, reply)
             _after_reply(reply)
             if check_ending(reply):
+                if _is_strong() and not state.get().get("ending_suppressed", False):
+                    s = state.get()
+                    queue = s.get("beat_queue", [])
+                    ptr = s.get("beat_ptr", 0)
+                    queue, ptr, suppressed = beat_mod.handle_ending_suppression(queue, ptr)
+                    if suppressed:
+                        state.update({"beat_queue": queue, "beat_ptr": ptr, "ending_suppressed": True})
+                        cleaned_reply = h[-1]["content"].replace(ENDING_MARKER, "").strip()
+                        h[-1] = {"role": "assistant", "content": cleaned_reply}
+                        last_gm_reply = cleaned_reply
+                        continue
                 h, quit_ = handle_ending(h)
+                if AUTO_PLAY_MODE or DEBUG_MODE:
+                    save_session_json(h, title)
                 if quit_:
                     break
             continue
@@ -579,15 +625,24 @@ def main():
 
 
         if action == "/hint":
-            hint_msg = hist.build_for_api(h) + [{
+            hint_base = hist.build_for_api(h)
+            # 最後がuserメッセージ（エラーで未応答）の場合は重複を避けるため削除してから追加
+            if hint_base and hint_base[-1]["role"] == "user":
+                hint_base = hint_base[:-1]
+            # 最後がassistantでない場合（空履歴等）はhintが出せないのでスキップ
+            if not hint_base or hint_base[-1]["role"] != "assistant":
+                system_print("ヒントを表示するには最初のGM描写が必要です。")
+                continue
+            hint_msg = hint_base + [{
                 "role": "user",
                 "content": "今の状況でプレイヤーが取れる行動を3〜4つ、短く箇条書きで提案してください。"
             }]
             call_gm(hint_msg)
             continue
 
-        # ダイス判定（use_diceがTrueの場合のみ）
-        dice_result = dice_mod.judge(action, h) if state.get().get("use_dice", True) else None
+        # ダイス判定（use_diceがTrueの場合のみ。システム強制終了アクションは除外）
+        is_forced_ending = action.startswith("（物語を終わらせてください）")
+        dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
         if dice_result and dice_result.get("error"):
             error_print("ダイス判定に失敗しました（APIエラーまたはJSON解析失敗）。判定なしで続行します。")
             dice_result = None
@@ -620,7 +675,9 @@ def main():
                 if suppressed:
                     state.update({"beat_queue": queue, "beat_ptr": ptr, "ending_suppressed": True})
                     # エンディングマーカーを除いて続行
-                    h[-1] = {"role": "assistant", "content": h[-1]["content"].replace(ENDING_MARKER, "").strip()}
+                    cleaned_reply = h[-1]["content"].replace(ENDING_MARKER, "").strip()
+                    h[-1] = {"role": "assistant", "content": cleaned_reply}
+                    last_gm_reply = cleaned_reply  # プレイヤーLLMにマーカーが渡らないよう更新
                     continue
 
             h, quit_ = handle_ending(h)

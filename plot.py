@@ -118,6 +118,25 @@ def _validate_and_repair(plot: dict) -> dict:
                 if DEBUG_MODE:
                     print(f"[plot修復] {key} を {len(extracted[key])} 件トップレベルに移動しました", file=sys.stderr)
 
+    # protagonist が文字列など dict でない場合は dict に変換
+    if not isinstance(plot.get("protagonist"), dict):
+        raw_prot = plot.get("protagonist", "")
+        plot["protagonist"] = {"name": str(raw_prot) if raw_prot else "", "wound": "", "goal_surface": "", "goal_deep": ""}
+
+    # characters の各要素が dict でない場合はスキップできる形に変換
+    chars = plot.get("characters", [])
+    if isinstance(chars, list):
+        plot["characters"] = [c if isinstance(c, dict) else {"name": str(c)} for c in chars]
+
+    # リスト系フィールドが dict でない場合は空リストに
+    for list_key in ("misconceptions", "failures", "twists", "choices"):
+        val = plot.get(list_key)
+        if val is not None and not isinstance(val, list):
+            plot[list_key] = []
+        elif isinstance(val, list):
+            # 要素が dict でない場合は除外
+            plot[list_key] = [item for item in val if isinstance(item, dict)]
+
     # climax・ending・ending_noteの欠落補完
     if not isinstance(plot.get("climax"), dict):
         plot["climax"] = {}

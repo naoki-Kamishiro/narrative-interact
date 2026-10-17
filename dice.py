@@ -101,7 +101,15 @@ def judge(action: str, history: list) -> dict | None:
     except Exception:
         return {"error": True}
 
-    if not data.get("need_roll", False):
+    # data が dict でない場合（配列や文字列で返ってきた場合）はエラー扱い
+    if not isinstance(data, dict):
+        return {"error": True}
+
+    # need_roll が文字列 "false" の場合も False として扱う
+    need_roll = data.get("need_roll", False)
+    if isinstance(need_roll, str):
+        need_roll = need_roll.lower() not in ("false", "0", "no", "")
+    if not need_roll:
         return None
 
     risk = data.get("risk", "mid")

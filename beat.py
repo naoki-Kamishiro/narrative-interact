@@ -44,6 +44,8 @@ def build_queue(plot: dict) -> list:
     queue = []
 
     for i, item in enumerate(plot.get("misconceptions", [])):
+        if not isinstance(item, dict):
+            continue
         queue.append({
             "src": "misconceptions",
             "src_idx": i,
@@ -54,6 +56,8 @@ def build_queue(plot: dict) -> list:
         })
 
     for i, item in enumerate(plot.get("failures", [])):
+        if not isinstance(item, dict):
+            continue
         queue.append({
             "src": "failures",
             "src_idx": i,
@@ -64,6 +68,8 @@ def build_queue(plot: dict) -> list:
         })
 
     for i, item in enumerate(plot.get("choices", [])):
+        if not isinstance(item, dict):
+            continue
         queue.append({
             "src": "choices",
             "src_idx": i,
@@ -75,6 +81,8 @@ def build_queue(plot: dict) -> list:
         })
 
     for i, item in enumerate(plot.get("twists", [])):
+        if not isinstance(item, dict):
+            continue
         queue.append({
             "src": "twists",
             "src_idx": i,
@@ -85,9 +93,18 @@ def build_queue(plot: dict) -> list:
         })
 
     # キャラクター登場ビート（charactersから生成）
-    protagonist_name = plot.get("protagonist", {}).get("name", "")
+    protagonist_raw = plot.get("protagonist", {})
+    protagonist_name = protagonist_raw.get("name", "") if isinstance(protagonist_raw, dict) else ""
     for i, c in enumerate(plot.get("characters", [])):
-        name = c.get("name", "").strip(": ").strip()
+        if not isinstance(c, dict):
+            continue
+        # {"name": "...", "role": "..."} 形式を優先し、
+        # {"sword_master": "説明文"} のような異形式はフォールバックで解釈する
+        if "name" in c:
+            name = c.get("name", "").strip(": ").strip()
+        else:
+            first_key = next(iter(c), "")
+            name = first_key.strip(": ").strip()
         if name and name != protagonist_name:
             queue.append({
                 "src": "characters",
@@ -176,24 +193,34 @@ def advance(queue: list, ptr: int, response: str) -> tuple[list, int]:
     現在ビートが描写されたか確認し、ポインタを進める。
     characterビートは名前照合で確認。それ以外は1回注入で信頼して進める。
     戻り値: (更新後queue, 新ptr)
+
+    注意: get_current_beat() はdone済みをスキップして最初のundoneビートを返す。
+    advance() も同じロジックで対象インデックスを特定し、queue[ptr]ではなく
+    実際に注入されたビートのインデックスをdoneにする。
     """
-    beat = get_current_beat(queue, ptr)
-    if beat is None:
+    # 実際に注入されたビートのインデックスを特定する
+    actual_idx = ptr
+    while actual_idx < len(queue) and queue[actual_idx]["done"]:
+        actual_idx += 1
+
+    if actual_idx >= len(queue):
         return queue, ptr
+
+    beat = queue[actual_idx]
 
     if beat["type"] == "character":
         name = beat.get("name", "")
         if detect_character(response, name):
-            queue[ptr]["done"] = True
-            return queue, ptr + 1
+            queue[actual_idx]["done"] = True
+            return queue, actual_idx + 1
         else:
             # 未検出: doneのまま保留、次ターンも再注入
             _debug(f"[BEAT] character '{name}' not detected, re-injecting next turn")
             return queue, ptr
     else:
         # 出来事系は1回注入で信頼して進める
-        queue[ptr]["done"] = True
-        return queue, ptr + 1
+        queue[actual_idx]["done"] = True
+        return queue, actual_idx + 1
 
 
 def filter_output(response: str) -> str:
