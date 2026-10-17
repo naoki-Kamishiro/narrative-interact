@@ -180,6 +180,7 @@ MIT
 - **Out-of-world items**: The player LLM may introduce items or tools that do not exist in the story's setting (e.g. a gun in a medical horror scenario). A rule prohibiting items outside the established world has been added to the player prompt.
 - **Fixation on failed targets**: In auto-play mode, the player LLM may keep attempting the same target after repeated failures. A rule requiring the player to switch targets after 2 consecutive failures on the same object has been added.
 - **Target-name variation loops**: In auto-play mode, the player LLM may repeat essentially the same action against the same group of enemies while slightly varying the target name each turn (e.g. "soldier A", "heavy infantry", "the man in front"). The existing rule that requires switching targets after 3 consecutive actions on the same object does not catch this, since each name is treated as a different target. Complete suppression depends on the model.
+- **Opening hook not resolved at ending**: The closing hook (hook.closing) defined in the plot may be omitted from the ending or epilogue. Both the plot section and the ending-note section of the GM prompt now include an explicit instruction to incorporate it into the ending scene. Complete suppression depends on the model.
 
 ---
 
