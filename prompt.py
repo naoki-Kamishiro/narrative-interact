@@ -427,7 +427,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append("")
             lines.append("【末尾の回収と余韻】")
             if ending_note.get("hook_resolution"):
-                lines.append(f"- フック回収: {ending_note['hook_resolution']}")
+                lines.append(f"- フック回収: {ending_note['hook_resolution']}（着地点の描写に含めること）")
             if ending_note.get("theme_closure"):
                 lines.append(f"- テーマの決着: {ending_note['theme_closure']}")
 
