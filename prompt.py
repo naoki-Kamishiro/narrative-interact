@@ -284,9 +284,21 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append("- 登場人物:")
             for c in characters:
                 if isinstance(c, dict):
-                    name = c.get("name", "").strip(": ").strip()
-                    role = c.get("role", "")
-                    lines.append(f"  - {name}: {role}")
+                    if "name" in c or "role" in c:
+                        # 標準形式: {"name": "...", "role": "..."}
+                        name = c.get("name", "").strip()
+                        role = c.get("role", "")
+                    else:
+                        # role名がキーの形式: {"sword_master": "説明文"}
+                        items = [(k, v) for k, v in c.items() if isinstance(v, str)]
+                        if items:
+                            role_key, role_desc = items[0]
+                            name = role_key
+                            role = role_desc
+                        else:
+                            continue
+                    if name or role:
+                        lines.append(f"  - {name}: {role}")
 
         if hook.get("opening"):
             lines.append(f"- 冒頭フック: {hook['opening']}")
