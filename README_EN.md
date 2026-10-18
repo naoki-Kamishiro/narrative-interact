@@ -81,8 +81,17 @@ On startup, you will be prompted for:
 
 1. **Genre** — e.g. `Fantasy`, `Mystery`, `Sci-Fi`
 2. **Title** — e.g. `The Elf and the Old Man`
-3. **Plot mode** — `weak` (GM follows the plot loosely) or `strong` (beat injection active)
+3. **Plot mode** — choose from 4 options (see below)
 4. **Difficulty** — `easy` / `normal` / `hard`
+
+**Plot modes:**
+
+| # | Mode | Description |
+|---|------|-------------|
+| 1 | Plot reference · free | Plot is advisory only. Deviation is fine. May end at the 40-turn limit if the story does not converge |
+| 2 | Plot reference · loose | Follows the plot but allows free play and deviation |
+| 3 | Plot reference · strict | Beats, twists, and failures are force-injected on schedule |
+| 4 | No plot · improv | No plot is generated; the GM improvises freely. May end at the 40-turn limit if the story does not converge |
 
 After that, the opening scene is generated and you begin.
 
