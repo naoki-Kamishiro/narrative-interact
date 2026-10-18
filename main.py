@@ -572,6 +572,8 @@ def main():
                     action = chat_player(last_gm_reply, sys_prompt, recent_actions)
                     if action.startswith("[ERROR"):
                         error_print(f"プレイヤーLLMエラー: {action}")
+                        state.update({"end_reason": "player_error"})
+                        save_session_json(h, title)
                         break
                     print(f"\nあなたの行動: {action}")
         else:
