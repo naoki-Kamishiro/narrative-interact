@@ -275,13 +275,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
                 f"- 主人公: {protagonist.get('name','')}"
             )
             lines.append(
-                f"- 傷: {protagonist.get('wound','')}"
-            )
-            lines.append(
                 f"- 表層ゴール: {protagonist.get('goal_surface','')}"
-            )
-            lines.append(
-                f"- 深層欲求: {protagonist.get('goal_deep','')}"
             )
 
         if characters:

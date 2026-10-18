@@ -151,8 +151,8 @@ def _validate_and_repair(plot: dict) -> dict:
         final_twist = twists[-1].get("content", "") if twists and isinstance(twists[-1], dict) else ""
         climax["setting"] = climax.get("setting") or "物語の最深部"
         climax["conflict_type"] = climax.get("conflict_type") or main_conflict or "主要な対立の決着"
-        climax["loss"] = climax.get("loss") or risks.get("identity") or protagonist.get("wound") or ""
-        climax["gain"] = climax.get("gain") or protagonist.get("goal_deep") or ""
+        climax["loss"] = climax.get("loss") or main_conflict or ""
+        climax["gain"] = climax.get("gain") or protagonist.get("goal_surface") or ""
         climax["peak"] = climax.get("peak") or final_twist or "物語の転換点"
         plot["climax"] = climax
         if DEBUG_MODE:
