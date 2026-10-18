@@ -347,7 +347,15 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
                 lines.append(
                     f"- 対立の種類: {climax.get('conflict_type','')}"
                 )
-            # loss / gain / peak は内面・抽象語を含むためGMには渡さない（NPCテーマ代弁を誘発するため）
+            lines.append(
+                f"- 喪失: {climax.get('loss','')}"
+            )
+            lines.append(
+                f"- 獲得: {climax.get('gain','')}"
+            )
+            lines.append(
+                f"- 感情ピーク: {climax.get('peak','')}"
+            )
 
         subplot = plot.get("subplot")
         if subplot:
