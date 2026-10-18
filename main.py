@@ -122,8 +122,18 @@ def _is_strong() -> bool:
 
 
 def _get_recent_player_actions(history: list, n: int = 5) -> list[str]:
-    """履歴からプレイヤー（user）の発言を直近n件取得する。"""
-    actions = [m["content"] for m in history if m["role"] == "user"]
+    """履歴からプレイヤー（user）の発言を直近n件取得する。
+    開始メッセージ（先頭）・ダイスタグ・システム括弧行を除外し、各メッセージの1行目のみ返す。
+    """
+    user_msgs = [m["content"] for m in history if m["role"] == "user"]
+    if user_msgs:
+        user_msgs = user_msgs[1:]
+    actions = []
+    for msg in user_msgs:
+        first_line = msg.split("\n")[0].strip()
+        if first_line.startswith("（") or not first_line:
+            continue
+        actions.append(first_line)
     return actions[-n:] if actions else []
 
 
