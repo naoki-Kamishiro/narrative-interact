@@ -168,7 +168,10 @@ For testing and evaluation, the system can play itself — the player role is al
 python main.py --normal           # auto-play, normal mode
 python main.py --deviate          # auto-play, deviate mode (intentionally pushes against GM constraints)
 python main.py --debug            # manual play with debug output
+python main.py --normal --batch 5 # batch mode: run 5 sessions with random genres and titles
 ```
+
+`--batch N` runs N consecutive sessions. The LLM generates a different genre and title for each session. Plot mode is selected once at startup and shared across all sessions. Difficulty is fixed at normal. Each session is saved as a JSON file on completion.
 
 Player LLM behavior varies significantly depending on the model, genre, and plot settings. When genre constraints disable combat, exploration, and mystery elements simultaneously (e.g. ensemble drama, slice-of-life), the player LLM tends to fall into repetitive loops — actions like "stare at", "move closer", or "look toward" repeated with slight variations. This is not a system bug; it reflects the model's natural behavior when available action space is narrow.
 

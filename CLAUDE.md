@@ -289,6 +289,10 @@ python main.py --normal
 # 自動プレイ（逸脱モード）
 python main.py --deviate
 
+# バッチ実行（ランダムなジャンル・タイトルでN回連続自動プレイ）
+python main.py --normal --batch 5
+python main.py --deviate --batch 3
+
 ```
 
 ---
