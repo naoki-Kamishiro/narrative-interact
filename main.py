@@ -438,6 +438,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
     """エンディング後の選択を処理する。戻り値は (履歴, 終了するか)。"""
     system_print("エンディングを迎えました。お疲れさまでした。")
     if AUTO_PLAY_MODE:
+        state.update({"end_reason": "ending"})
         # 自動プレイ時はエピローグを自動生成して終了
         h = hist.add_user(h, EPILOGUE_PROMPT)
         reply = call_gm(hist.build_for_api(h))
@@ -546,6 +547,7 @@ def main():
             # ターン上限チェック
             auto_play_turn += 1
             if auto_play_turn > AUTO_PLAY_MAX_TURNS:
+                state.update({"end_reason": "turn_limit"})
                 system_print(f"自動プレイのターン上限（{AUTO_PLAY_MAX_TURNS}ターン）に達しました。終了します。")
                 if DEBUG_MODE:
                     save_session_json(h, title)
