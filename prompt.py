@@ -266,6 +266,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
         hook = plot.get("hook", {})
         lines.append("")
         lines.append("【プロット（GMのみが知る設計図）】")
+        lines.append("事実はNPCが台詞で言ってよいが、その事実が主人公にとって何を意味するかはNPCも地の文も言わないこと。")
 
         if protagonist:
             lines.append(
