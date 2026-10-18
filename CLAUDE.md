@@ -173,6 +173,26 @@ GMが毎ターン「違う台詞を生成しなければ」と判断し文章量
 **バグ11: 自動プレイに終了の保証がない**
 → 60ターンの上限を追加。システム強制終了アクションはダイス判定をスキップするよう修正。
 
+### GM地の文違反・NPCテーマ代弁の根本原因除去（2026年10月・commit 66b982e）
+
+群像ドラマ/日常ジャンルでの自動プレイテストで以下の問題を確認：
+- GM地の文で形容詞・副詞レベルの内面表現が出続ける（「疲れが色濃く浮かぶ」等）
+- NPCがテーマをセリフで直接代弁する（「この仕事も無意味じゃないわよ」等）
+
+**根本原因**：上位モデル分析により、プロンプトが内面語をGMに渡していることが判明。
+- styleフィールドに「内面を対比させる」が入り、地の文禁止ルールと正面から矛盾していた
+- theme_closure・peak・risks・loss・gainが抽象語でGMに渡り、テーマを言葉にできる場所がNPCのセリフしか残らない構造になっていた
+
+**修正内容**：
+
+- **prompt.py / PLOT_SCHEMA**: styleフィールド指示に「内面・心情・感情・解釈を求める表現は書かないこと」を追加
+- **prompt.py / build_system_prompt()**: 【文体】に「地の文ルール（感情・内面・意味付けの禁止）と衝突する場合は、地の文ルールを優先する」を追加
+- **prompt.py / build_system_prompt()**: climax.loss / climax.gain / climax.peak をGMに渡さないよう削除
+- **prompt.py / build_system_prompt()**: risks（personal/relational/identity）をGMに渡さないよう削除
+- **prompt.py / build_system_prompt()**: ending_note.theme_closure をGMに渡さないよう削除
+- **beat.py / _TEMPLATES**: misconceptionとtwistに「事実はNPCが台詞で言ってよいが、その事実が主人公にとって何を意味するかはNPCも地の文も言わないこと」を追加（範囲を絞って適用）
+- **main.py**: 自動プレイ時にstateからpromotagonist.nameを取得し、sys_promptの先頭に主人公名を付加（1ターン目で他キャラを操作する問題への対処）
+
 ---
 
 ## GMプロンプトの構造
