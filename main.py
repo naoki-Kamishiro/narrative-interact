@@ -539,7 +539,7 @@ def main():
 
     last_gm_reply = initial_reply  # 自動プレイ用: 最後のGM応答（初回含む）
     auto_play_turn = 0  # 自動プレイのターンカウンタ
-    AUTO_PLAY_MAX_TURNS = 60  # 自動プレイの最大ターン数
+    AUTO_PLAY_MAX_TURNS = 40  # 自動プレイの最大ターン数
 
     while True:
         if AUTO_PLAY_MODE:
