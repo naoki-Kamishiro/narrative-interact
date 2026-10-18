@@ -173,6 +173,21 @@ MIT
 
 ---
 
+## Model limitations (Gemma4 12B)
+
+Behaviors that prompt engineering reduces but cannot fully eliminate. Higher-capability models may improve on these.
+
+- **Emotional or interpretive language in narration**: The GM may write phrases like "pride filled his chest" or "her resolve hardened" — emotional or internal descriptions that should be conveyed only through action and expression. Suppressed by explicit prohibition rules, but tends to resurface in later turns of longer stories.
+- **Ending prompt at every turn**: The GM tends to close each turn with "What will you do?" or "Where will you go next?" Suppressed by rule.
+- **Bullet-point choices**: The GM may list options as "A. Flee  B. Fight  C. Negotiate". Suppressed by rule.
+- **Ignoring or reversing dice results**: The GM may describe near-success on a failure roll, or immediately undercut a success. Suppressed by consistency rules.
+- **Scene stagnation**: The GM may linger on the same location or object across many turns without advancing the story. Suppressed by repetition-limit rules.
+- **NPC as thematic spokesperson**: An NPC may say something like "You've really grown" — interpreting the protagonist's actions in thematic terms. Suppressed by rule.
+- **Premature ending**: The GM may end the story on a mundane beat like "returned home" or "took a rest". Suppressed by detailed ending conditions.
+- **Plot ending foreshadowed early**: Motivation words or theme language from the plot's ending field (e.g. "what he wanted to protect", "obsession") may appear in NPC dialogue or narration before the ending. Suppressed by prohibition rules and by excluding motivation language from the ending field in plot generation. More likely to occur in genres where motivation is central to the plot, such as mystery. Complete suppression depends on the model.
+
+---
+
 ## Known issues
 
 - **Auto-play action loops**: The player LLM may repeat actions on the same target by slightly varying the verb (e.g. "grip" → "grip tightly" → "apply force"). A rule requiring the player to switch targets or locations after 3 consecutive actions on the same object has been added to reduce this. Complete suppression depends on the model.
