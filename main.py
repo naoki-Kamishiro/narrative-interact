@@ -10,7 +10,7 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat, chat_player
+from api import chat, chat_player, generate_genre_title
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message
 import dice as dice_mod
@@ -43,6 +43,9 @@ AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸
 
 # デバッグモード（--debug引数で有効）
 DEBUG_MODE: bool = False
+
+# バッチ実行回数（--batch N で設定）
+BATCH_COUNT: int = 0  # 0=通常, N=N回バッチ実行
 
 PLAYER_SYSTEM_NORMAL = (
     "あなたはナラティブインタラクトシステムのプレイヤーです。\n"
@@ -472,22 +475,173 @@ def push_user(h: list, content: str, replace_pending: bool) -> list:
         h.pop()
     return hist.add_user(h, content)
 
-def main():
+def run_single_session(plot_mode: str) -> None:
+    """バッチモード用: 1セッションを実行してセーブして終了する。
+    plot_mode: あらかじめ選択済みの物語の軸。
+    """
     global AUTO_PLAY_MODE, DEBUG_MODE
+
+    # ジャンル・タイトルをLLMに生成させる
+    prev_genre = getattr(run_single_session, "_prev_genre", "")
+    result = generate_genre_title(prev_genre)
+    if "error" in result:
+        error_print(f"ジャンル・タイトル生成に失敗しました: {result['error']}")
+        return
+    genre = result.get("genre", "").strip()
+    title = result.get("title", "").strip()
+    if not genre or not title:
+        error_print(f"ジャンル・タイトルが空です: {result}")
+        return
+    run_single_session._prev_genre = genre
+
+    system_print(f"ジャンル: {genre} / タイトル: 「{title}」")
+
+    # 難易度は標準固定
+    difficulty_preset = "normal"
+    dice_mod.set_difficulty_preset(difficulty_preset)
+
+    if plot_mode == "improv":
+        system_print("プロット生成なし")
+        plot = {}
+    else:
+        plot = plot_mod.generate(genre, title)
+
+    state.init(genre, title, plot, plot_mode)
+    state.update({"use_dice": True, "difficulty_preset": difficulty_preset,
+                  "auto_play_mode": AUTO_PLAY_MODE or "manual"})
+
+    if plot_mode == "strong" and plot:
+        queue = beat_mod.build_queue(plot)
+        state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
+        if DEBUG_MODE:
+            print(f"[BEAT] queue built: {len(queue)} beats", file=sys.stderr)
+
+    h = hist.new_history(plot, plot_mode, genre)
+    start_msg = build_start_message(genre, title, plot)
+    h = hist.add_user(h, start_msg)
+
+    print()
+    print(f"── 「{title}」 開始 ──")
+    protagonist = plot.get("protagonist", {}) if plot else {}
+    if protagonist.get("name"):
+        name = protagonist["name"]
+        print(f"あなたは{name}として、この物語を紡ぎます。")
+        print()
+
+    reply = call_gm(_build_api_messages(h))
+    if reply.startswith("[ERROR"):
+        error_print("初回応答生成に失敗しました。このセッションをスキップします。")
+        return
+    h = hist.add_assistant(h, reply)
+    _after_reply(reply)
+    last_gm_reply = reply
+
+    auto_play_turn = 0
+    AUTO_PLAY_MAX_TURNS = 40
+
+    while True:
+        auto_play_turn += 1
+        if auto_play_turn > AUTO_PLAY_MAX_TURNS:
+            state.update({"end_reason": "turn_limit"})
+            system_print(f"自動プレイのターン上限（{AUTO_PLAY_MAX_TURNS}ターン）に達しました。終了します。")
+            save_session_json(h, title)
+            break
+
+        if not last_gm_reply:
+            action = ""
+        else:
+            if _is_strong() and state.get().get("ending_prompted", False) and \
+                    state.get().get("post_prompt_count", 0) >= 3:
+                action = "（物語を終わらせてください）"
+                print(f"\nあなたの行動: {action} [システム強制]")
+            else:
+                sys_prompt = PLAYER_SYSTEM_NORMAL if AUTO_PLAY_MODE == "normal" else PLAYER_SYSTEM_DEVIATE
+                _plot = state.get().get("plot", {})
+                _protagonist = _plot.get("protagonist", {}) if _plot else {}
+                _pname = _protagonist.get("name", "") if _protagonist else ""
+                if _pname:
+                    sys_prompt = f"あなたが操作する主人公の名前は「{_pname}」です。他のキャラクターを操作しないこと。\n" + sys_prompt
+                recent_actions = _get_recent_player_actions(h, n=5)
+                action = chat_player(last_gm_reply, sys_prompt, recent_actions)
+                if action.startswith("[ERROR"):
+                    error_print(f"プレイヤーLLMエラー: {action}")
+                    state.update({"end_reason": "player_error"})
+                    save_session_json(h, title)
+                    break
+                print(f"\nあなたの行動: {action}")
+
+        if not action:
+            continue
+
+        is_forced_ending = action.startswith("（物語を終わらせてください）")
+        dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
+        if dice_result and dice_result.get("error"):
+            error_print("ダイス判定に失敗しました。判定なしで続行します。")
+            dice_result = None
+        elif dice_result:
+            dice_mod.display_result(dice_result)
+        user_msg = _build_user_msg(action, dice_result)
+        h = hist.add_user(h, user_msg)
+
+        reply = call_gm(_build_api_messages(h))
+        if reply.startswith("[ERROR"):
+            error_print("応答生成に失敗しました。スキップして続行します。")
+            h.pop()
+            continue
+
+        h = hist.add_assistant(h, reply)
+        last_gm_reply = reply
+        _after_reply(reply)
+
+        if check_ending(reply):
+            if _is_strong() and not state.get().get("ending_suppressed", False):
+                s = state.get()
+                queue = s.get("beat_queue", [])
+                ptr = s.get("beat_ptr", 0)
+                queue, ptr, suppressed = beat_mod.handle_ending_suppression(queue, ptr)
+                if suppressed:
+                    state.update({"beat_queue": queue, "beat_ptr": ptr, "ending_suppressed": True})
+                    cleaned_reply = h[-1]["content"].replace(ENDING_MARKER, "").strip()
+                    h[-1] = {"role": "assistant", "content": cleaned_reply}
+                    last_gm_reply = cleaned_reply
+                    continue
+
+            h, _ = handle_ending(h)
+            save_session_json(h, title)
+            break
+
+
+def main():
+    global AUTO_PLAY_MODE, DEBUG_MODE, BATCH_COUNT
     if "--help" in sys.argv or "-h" in sys.argv:
         print("使い方: python main.py [オプション]")
         print()
         print("オプション:")
-        print("  --normal    自動プレイ（通常）")
-        print("  --deviate   自動プレイ（逸脱）")
-        print("  --debug     デバッグ出力を有効化（stderrに出力）")
-        print("  --help, -h  このヘルプを表示")
+        print("  --normal         自動プレイ（通常）")
+        print("  --deviate        自動プレイ（逸脱）")
+        print("  --batch N        N回バッチ実行（--normal または --deviate と併用）")
+        print("  --debug          デバッグ出力を有効化（stderrに出力）")
+        print("  --help, -h       このヘルプを表示")
         sys.exit(0)
 
     if "--normal" in sys.argv:
         AUTO_PLAY_MODE = "normal"
     elif "--deviate" in sys.argv:
         AUTO_PLAY_MODE = "deviate"
+
+    # --batch N の解析
+    if "--batch" in sys.argv:
+        idx = sys.argv.index("--batch")
+        if idx + 1 < len(sys.argv):
+            try:
+                BATCH_COUNT = int(sys.argv[idx + 1])
+            except ValueError:
+                print("--batch の引数は整数で指定してください。")
+                sys.exit(1)
+        else:
+            print("--batch の後に回数を指定してください。例: --batch 5")
+            sys.exit(1)
+
     # 自動プレイ時は常にデバッグ有効
     if AUTO_PLAY_MODE or "--debug" in sys.argv:
         DEBUG_MODE = True
@@ -500,9 +654,25 @@ def main():
     print("╚══════════════════════════════════════════╝")
     if AUTO_PLAY_MODE:
         print(f"[自動プレイモード: {'通常' if AUTO_PLAY_MODE == 'normal' else '逸脱'}]")
+    if BATCH_COUNT > 0:
+        print(f"[バッチモード: {BATCH_COUNT}回実行]")
     print()
     print("コマンド一覧は /help または /h")
     print()
+
+    # バッチモード
+    if BATCH_COUNT > 0:
+        if not AUTO_PLAY_MODE:
+            print("--batch は --normal または --deviate と併用してください。")
+            sys.exit(1)
+        plot_mode = ask_plot_mode()
+        print()
+        for i in range(BATCH_COUNT):
+            print(f"═══ バッチ {i+1}/{BATCH_COUNT} ═══")
+            run_single_session(plot_mode)
+            print()
+        system_print(f"バッチ実行完了: {BATCH_COUNT}回")
+        return
 
     h, genre, title = None, "", ""
 
