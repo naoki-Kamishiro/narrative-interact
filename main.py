@@ -550,6 +550,12 @@ def main():
                     print(f"\nあなたの行動: {action} [システム強制]")
                 else:
                     sys_prompt = PLAYER_SYSTEM_NORMAL if AUTO_PLAY_MODE == "normal" else PLAYER_SYSTEM_DEVIATE
+                    # 主人公名をsys_promptに付加（キャラ誤操作防止）
+                    _plot = state.get().get("plot", {})
+                    _protagonist = _plot.get("protagonist", {}) if _plot else {}
+                    _pname = _protagonist.get("name", "") if _protagonist else ""
+                    if _pname:
+                        sys_prompt = f"あなたが操作する主人公の名前は「{_pname}」です。他のキャラクターを操作しないこと。\n" + sys_prompt
                     recent_actions = _get_recent_player_actions(h, n=5)
                     action = chat_player(last_gm_reply, sys_prompt, recent_actions)
                     if action.startswith("[ERROR"):

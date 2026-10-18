@@ -119,7 +119,7 @@ SYSTEM_PLOT = """\
     "comedy": false,
     "inventory": false
   },
-  "style": "文体の指示（ジャンルとタイトルから想定される読み手に合わせ、敬体か常体か・1文の長さ・語彙の硬さ・擬音語や繰り返しのリズムの使い方を、具体的に2〜3文で。例：絵本なら「です・ます調。1文は短く、ひらがなを多めに。難しい熟語や抽象的な言葉は使わず、音やくり返しのリズムを大切にする」／ハードボイルドなら「常体。短く乾いた文。比喩は少なく、感情は語らず行動で見せる」）",
+  "style": "文体の指示（ジャンルとタイトルから想定される読み手に合わせ、敬体か常体か・1文の長さ・語彙の硬さ・擬音語や繰り返しのリズムの使い方を、具体的に2〜3文で。例：絵本なら「です・ます調。1文は短く、ひらがなを多めに。難しい熟語や抽象的な言葉は使わず、音やくり返しのリズムを大切にする」／ハードボイルドなら「常体。短く乾いた文。比喩は少なく、感情は語らず行動で見せる」。内面・心情・感情・解釈を求める表現は書かないこと）",
   "genre_weave": "ジャンルの織り込み方",
   "title_weave": {
     "early": "序盤：物・場所・状態との接続方法のみ",
@@ -230,6 +230,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
     if style:
         lines.append(f"- {style}")
         lines.append("- 上の文体を地の文・セリフの両方で毎ターン守る。説明的・抽象的・文語的な言い回しに寄せない")
+        lines.append("- 文体指示が地の文ルール（感情・内面・意味付けの禁止）と衝突する場合は、地の文ルールを優先する")
     elif genre:
         lines.append(f"- ジャンル「{genre}」の読み手にとって自然な語り口・語彙の硬さ・文の長さで書く。そのジャンルの読み手に難しい言葉や、抽象的で文語的な言い回しは使わない")
 
@@ -346,15 +347,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
                 lines.append(
                     f"- 対立の種類: {climax.get('conflict_type','')}"
                 )
-            lines.append(
-                f"- 喪失: {climax.get('loss','')}"
-            )
-            lines.append(
-                f"- 獲得: {climax.get('gain','')}"
-            )
-            lines.append(
-                f"- 感情ピーク: {climax.get('peak','')}"
-            )
+            # loss / gain / peak は内面・抽象語を含むためGMには渡さない（NPCテーマ代弁を誘発するため）
 
         subplot = plot.get("subplot")
         if subplot:
@@ -411,16 +404,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
                             f"- {m.get('timing','')}: {m.get('content','')}"
                         )
 
-        risks = plot.get("risks", {})
-        if risks:
-            lines.append("")
-            lines.append("【リスク】")
-            if risks.get("personal"):
-                lines.append(f"- 個人: {risks['personal']}")
-            if risks.get("relational"):
-                lines.append(f"- 関係: {risks['relational']}")
-            if risks.get("identity"):
-                lines.append(f"- アイデンティティ: {risks['identity']}")
+        # risks・theme_closure は内面・抽象語を含むためGMには渡さない（NPCテーマ代弁を誘発するため）
 
         ending_note = plot.get("ending_note", {})
         if ending_note:
@@ -428,8 +412,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append("【末尾の回収と余韻】")
             if ending_note.get("hook_resolution"):
                 lines.append(f"- フック回収: {ending_note['hook_resolution']}（着地点の描写に含めること）")
-            if ending_note.get("theme_closure"):
-                lines.append(f"- テーマの決着: {ending_note['theme_closure']}")
+            # theme_closure は内面・抽象語を含むためGMには渡さない
 
     return "\n".join(lines)
 
