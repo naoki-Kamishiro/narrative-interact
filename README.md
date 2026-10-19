@@ -14,6 +14,7 @@
 関連記事：
 - [第4章：LMスタジオのみでお手軽小説を描いてもらおう](https://note.com/kamishiro_naoki/n/n7bb219be4c1a)
 - [第5章：LMスタジオのみでお手軽TRPG？](https://note.com/kamishiro_naoki/n/n6d907b73cc56)
+- [ジャンルとタイトルを指定するだけ。AIが作る物語に介入して遊ぶシステムを作った](https://note.com/kamishiro_naoki/n/n374f0b0b0a0b)（本プロジェクトの紹介記事）
 
 ---
 
