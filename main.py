@@ -278,7 +278,7 @@ PLOT_MODE_LABELS = {
 }
 
 def ask_plot_mode() -> str:
-    auto_note = "（40ターンで強制終了する場合あり）"
+    auto_note = "（実験的）（40ターンで強制終了する場合あり）"
     print()
     print("物語の軸:")
     print(f"  1. プロット参照・自由{auto_note}")
