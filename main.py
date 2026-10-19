@@ -285,12 +285,13 @@ PLOT_MODE_LABELS = {
 }
 
 def ask_plot_mode() -> str:
+    auto_note = "（自動プレイ時は40ターンで強制終了）" if AUTO_PLAY_MODE else ""
     print()
     print("物語の軸:")
-    print("  1. プロット参照・自由（40ターンで強制終了する場合あり）")
+    print(f"  1. プロット参照・自由{auto_note}")
     print("  2. プロット参照・緩拘束（プロットに添うが逸脱プレイ可能）")
     print("  3. プロット参照・強拘束（プロット強制回収）")
-    print("  4. プロットなし・即興（40ターンで強制終了する場合あり）")
+    print(f"  4. プロットなし・即興{auto_note}")
     while True:
         choice = ask("選択 [1/2/3/4]: ")
         if choice in PLOT_MODE_LABELS:
