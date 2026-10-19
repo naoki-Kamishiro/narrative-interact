@@ -321,8 +321,10 @@ def ask_difficulty() -> str:
         system_print("1〜3のいずれかを入力してください。")
 
 def start_new_game() -> tuple[list, str, str]:
-    genre = ask("ジャンル: ")
-    title = ask("タイトル: ")
+    while not (genre := ask("ジャンル: ").strip()):
+        system_print("ジャンルを入力してください。")
+    while not (title := ask("タイトル: ").strip()):
+        system_print("タイトルを入力してください。")
     plot_mode = ask_plot_mode()
     use_dice = ask_use_dice()
     if use_dice:
