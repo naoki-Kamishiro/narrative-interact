@@ -562,7 +562,7 @@ def run_single_session(plot_mode: str) -> None:
                     sys_prompt = f"あなたが操作する主人公の名前は「{_pname}」です。他のキャラクターを操作しないこと。\n" + sys_prompt
                 recent_actions = _get_recent_player_actions(h, n=5)
                 # DEVIATEモードでは「繰り返し禁止の参考」を渡さない（行動抑制を避けるため）
-                _ra = None if auto_play_mode == "deviate" else recent_actions
+                _ra = None if AUTO_PLAY_MODE == "deviate" else recent_actions
                 action = chat_player(last_gm_reply, sys_prompt, _ra)
                 if action.startswith("[ERROR"):
                     error_print(f"プレイヤーLLMエラー: {action}")
@@ -741,7 +741,7 @@ def main():
                         sys_prompt = f"あなたが操作する主人公の名前は「{_pname}」です。他のキャラクターを操作しないこと。\n" + sys_prompt
                     recent_actions = _get_recent_player_actions(h, n=5)
                     # DEVIATEモードでは「繰り返し禁止の参考」を渡さない（行動抑制を避けるため）
-                    _ra = None if auto_play_mode == "deviate" else recent_actions
+                    _ra = None if AUTO_PLAY_MODE == "deviate" else recent_actions
                     action = chat_player(last_gm_reply, sys_prompt, _ra)
                     if action.startswith("[ERROR"):
                         error_print(f"プレイヤーLLMエラー: {action}")
