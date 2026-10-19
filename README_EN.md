@@ -168,7 +168,8 @@ For testing and evaluation, the system can play itself — the player role is al
 python main.py --normal           # auto-play, normal mode
 python main.py --deviate          # auto-play, deviate mode (intentionally pushes against GM constraints)
 python main.py --debug            # manual play with debug output
-python main.py --normal --batch 5 # batch mode: run 5 sessions with random genres and titles
+python main.py --normal --batch 5  # batch mode: run 5 sessions with random genres and titles
+python main.py --deviate --batch 5 # batch mode, deviate variant
 ```
 
 `--batch N` runs N consecutive sessions. The LLM generates a different genre and title for each session. Plot mode is selected once at startup and shared across all sessions. Difficulty is fixed at normal. Each session is saved as a JSON file on completion.

@@ -112,7 +112,8 @@ TEMPERATURE   = 0.85
 python main.py --normal           # 通常モード
 python main.py --deviate          # 逸脱モード（GM制約を意図的に超える行動）
 python main.py --debug            # 手動プレイ＋デバッグ出力あり
-python main.py --normal --batch 5 # バッチ実行（ランダムなジャンル・タイトルで5回連続）
+python main.py --normal --batch 5   # バッチ実行（ランダムなジャンル・タイトルで5回連続）
+python main.py --deviate --batch 5  # 逸脱モードでバッチ実行
 ```
 
 `--batch N` を指定すると、LLMがジャンルとタイトルを毎回自動生成してN回連続で実行し、1回ごとにJSONファイルを保存する。物語の軸は起動時に1回だけ選択し、難易度は標準固定。
