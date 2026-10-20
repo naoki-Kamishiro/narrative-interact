@@ -890,7 +890,7 @@ def main():
                 continue
             hint_msg = hint_base + [{
                 "role": "user",
-                "content": "今の状況でプレイヤーが取れる行動を3〜4つ、短く箇条書きで提案してください。"
+                "content": "今の状況でプレイヤーが取れる行動を3〜4つ提案してください。形式：各行を「・」で始め、行動を10〜20字で簡潔に記述する。説明や補足は不要。"
             }]
             call_gm(hint_msg)
             continue
