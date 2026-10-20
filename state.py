@@ -19,6 +19,8 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "beat_queue": [],
         "beat_ptr": 0,
         "ending_suppressed": False,
+        "fixation_count": 0,
+        "fixation_ending": False,
     }
 
 def get() -> dict:

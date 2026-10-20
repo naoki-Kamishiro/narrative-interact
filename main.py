@@ -218,24 +218,38 @@ def _build_api_messages(h: list) -> list:
             if DEBUG_MODE:
                 print(f"[BEAT] post-ending injection (turn {post_count})", file=sys.stderr)
         return msgs
-    # off/on/improvモード: 固執ループ検出→エンディング強制injection
-    if not _is_strong():
+    # off/on/improvモード・自動プレイ時のみ: 固執ループ検出→エンディング強制injection
+    if not _is_strong() and AUTO_PLAY_MODE:
         recent = _get_recent_player_actions(h, n=3)
         if len(recent) >= 3 and check_fixation(recent):
+            s = state.get()
+            fixation_count = s.get("fixation_count", 0) + 1
+            state.update({"fixation_count": fixation_count})
             msgs = list(hist.build_for_api(h))
-            injection = (
-                "プレイヤーが同一対象への行動を繰り返しループしている。"
-                "その固執の結末（失敗・消耗・状況の収束）を描写し、このターンでエンディングに導くこと。"
-                "最後の1行に「【エンディング】」とのみ出力すること。"
-            )
+            if fixation_count >= 2:
+                injection = (
+                    "プレイヤーが同一対象への行動を繰り返しループしている。"
+                    "その固執の結末（失敗・消耗・状況の収束）を描写し、このターンでエンディングに導くこと。"
+                    "着地点の文は使わず、現在の状況から自然に導かれる結末を書くこと。"
+                    "最後の1行に「【エンディング】」とのみ出力すること。"
+                )
+                state.update({"fixation_ending": True})
+            else:
+                injection = (
+                    "プレイヤーの行動が同じ対象に集中している。"
+                    "物語を収束に向けて進めてください。"
+                )
             for i in reversed(range(len(msgs))):
                 if msgs[i]["role"] == "user":
                     msgs[i] = dict(msgs[i])
                     msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
                     break
             if DEBUG_MODE:
-                print("[FIXATION] loop detected: injecting ending prompt", file=sys.stderr)
+                print(f"[FIXATION] count={fixation_count}: injecting {'ending' if fixation_count >= 2 else 'soft'} prompt", file=sys.stderr)
             return msgs
+        else:
+            # ループ解消されたらカウントリセット
+            state.update({"fixation_count": 0})
     return hist.build_for_api(h)
 
 
@@ -266,13 +280,11 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
             "決定的な成功として描写すること。"
             "行動の目的を大きく前進させる具体的な結果を示す。"
             "成功を無効化・矮小化しない。"
-            "この行動がプロットの目標を直接・完全に達成した場合のみエンディングに導いてよい。"
         )
     elif dice_result["success"]:
         inst = (
             "成功として状況が一歩前進したとして描写すること。"
             "成功を無効化・矮小化しない。"
-            "この行動がプロットの目標を直接・完全に達成した場合のみエンディングに導いてよい。"
         )
     elif intensity == "severe":
         inst = (
@@ -469,7 +481,8 @@ def handle_ending(h: list) -> tuple[list, bool]:
     """エンディング後の選択を処理する。戻り値は (履歴, 終了するか)。"""
     system_print("エンディングを迎えました。お疲れさまでした。")
     if AUTO_PLAY_MODE:
-        state.update({"end_reason": "ending"})
+        end_reason = "fixation" if state.get().get("fixation_ending") else "ending"
+        state.update({"end_reason": end_reason})
         # 自動プレイ時はエピローグを自動生成して終了
         h = hist.add_user(h, EPILOGUE_PROMPT)
         reply = call_gm(hist.build_for_api(h))
