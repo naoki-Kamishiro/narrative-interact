@@ -11,6 +11,7 @@ import history as hist
 import plot as plot_mod
 import save as save_mod
 from api import chat, chat_player, generate_genre_title
+import random
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message
 import dice as dice_mod
@@ -46,6 +47,18 @@ DEBUG_MODE: bool = False
 
 # バッチ実行回数（--batch N で設定）
 BATCH_COUNT: int = 0  # 0=通常, N=N回バッチ実行
+
+# バッチ用ジャンルリスト
+BATCH_GENRES = [
+    "ホラー", "ミステリー", "ファンタジー", "SF",
+    "時代劇", "現代ドラマ", "サスペンス", "青春",
+    "怪談", "冒険", "犯罪", "日常",
+]
+_batch_genre_queue: list[str] = []  # シャッフル済みキュー
+
+# バッチ用ダイス設定（開始前に1回だけ手入力）
+BATCH_USE_DICE: bool = True
+BATCH_DIFFICULTY: str = "normal"
 
 PLAYER_SYSTEM_NORMAL = (
     "あなたはナラティブインタラクトシステムのプレイヤーです。\n"
@@ -471,30 +484,36 @@ def push_user(h: list, content: str, replace_pending: bool) -> list:
         h.pop()
     return hist.add_user(h, content)
 
+def _pick_batch_genre() -> str:
+    """バッチ用ジャンルキューから次のジャンルを取り出す。空になったら再シャッフル。"""
+    global _batch_genre_queue
+    if not _batch_genre_queue:
+        _batch_genre_queue = random.sample(BATCH_GENRES, len(BATCH_GENRES))
+    return _batch_genre_queue.pop(0)
+
+
 def run_single_session(plot_mode: str) -> None:
     """バッチモード用: 1セッションを実行してセーブして終了する。
     plot_mode: あらかじめ選択済みの物語の軸。
     """
     global AUTO_PLAY_MODE, DEBUG_MODE
 
-    # ジャンル・タイトルをLLMに生成させる
-    prev_genre = getattr(run_single_session, "_prev_genre", "")
-    result = generate_genre_title(prev_genre)
+    # ジャンルをリストから選択し、タイトルのみLLMに生成させる
+    genre = _pick_batch_genre()
+    result = generate_genre_title(genre)
     if "error" in result:
-        error_print(f"ジャンル・タイトル生成に失敗しました: {result['error']}")
+        error_print(f"タイトル生成に失敗しました: {result['error']}")
         return
-    genre = result.get("genre", "").strip()
     title = result.get("title", "").strip()
-    if not genre or not title:
-        error_print(f"ジャンル・タイトルが空です: {result}")
+    if not title:
+        error_print(f"タイトルが空です: {result}")
         return
-    run_single_session._prev_genre = genre
 
     system_print(f"ジャンル: {genre} / タイトル: 「{title}」")
 
-    # 難易度は標準固定
-    difficulty_preset = "normal"
-    dice_mod.set_difficulty_preset(difficulty_preset)
+    # バッチ用ダイス設定を適用
+    dice_mod.set_difficulty_preset(BATCH_DIFFICULTY)
+    difficulty_preset = BATCH_DIFFICULTY
 
     if plot_mode == "improv":
         system_print("プロット生成なし")
@@ -503,7 +522,7 @@ def run_single_session(plot_mode: str) -> None:
         plot = plot_mod.generate(genre, title)
 
     state.init(genre, title, plot, plot_mode)
-    state.update({"use_dice": True, "difficulty_preset": difficulty_preset,
+    state.update({"use_dice": BATCH_USE_DICE, "difficulty_preset": difficulty_preset,
                   "auto_play_mode": AUTO_PLAY_MODE or "manual"})
 
     if plot_mode == "strong" and plot:
@@ -664,6 +683,13 @@ def main():
             print("--batch は --normal または --deviate と併用してください。")
             sys.exit(1)
         plot_mode = ask_plot_mode()
+        print()
+        # ダイス設定を1回だけ手入力
+        global BATCH_USE_DICE, BATCH_DIFFICULTY
+        BATCH_USE_DICE = ask_use_dice()
+        if BATCH_USE_DICE:
+            BATCH_DIFFICULTY = ask_difficulty()
+            dice_mod.set_difficulty_preset(BATCH_DIFFICULTY)
         print()
         for i in range(BATCH_COUNT):
             print(f"═══ バッチ {i+1}/{BATCH_COUNT} ═══")

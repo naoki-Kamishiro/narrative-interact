@@ -79,20 +79,27 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
         return f"[ERROR: {e}]"
 
 
-def generate_genre_title(prev_genre: str = "") -> dict:
-    """バッチモード用: LLMにジャンルとタイトルを生成させる。
-    prev_genre: 前回のジャンル（同じジャンルを避けるため渡す）。
+def generate_genre_title(genre: str = "") -> dict:
+    """バッチモード用: LLMにタイトルを生成させる。
+    genre: ジャンル（指定された場合はそのジャンルのタイトルのみ生成）。
     戻り値: {"genre": "...", "title": "..."} または {"error": "..."}
     """
-    avoid = f"前回使用したジャンル：{prev_genre}。同じジャンルは避けてください。\n" if prev_genre else ""
-    prompt = (
-        f"{avoid}"
-        "インタラクティブフィクション（テキストRPG）のジャンルとタイトルを1つ考えてください。\n"
-        "ジャンルの例：ミステリー、ファンタジー、ホラー、SF、日常、時代劇、群像劇など。\n"
-        "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
-        "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
-        '{"genre": "ジャンル名", "title": "タイトル"}'
-    )
+    if genre:
+        prompt = (
+            f"インタラクティブフィクション（テキストRPG）のタイトルを1つ考えてください。\n"
+            f"ジャンル：{genre}\n"
+            "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
+            "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
+            f'{{"genre": "{genre}", "title": "タイトル"}}'
+        )
+    else:
+        prompt = (
+            "インタラクティブフィクション（テキストRPG）のジャンルとタイトルを1つ考えてください。\n"
+            "ジャンルの例：ミステリー、ファンタジー、ホラー、SF、日常、時代劇、群像劇など。\n"
+            "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
+            "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
+            '{"genre": "ジャンル名", "title": "タイトル"}'
+        )
     messages = [
         {"role": "system", "content": "あなたは創作のアイデアを提案するアシスタントです。"},
         {"role": "user", "content": prompt},
