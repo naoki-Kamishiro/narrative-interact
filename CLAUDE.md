@@ -259,3 +259,11 @@ python main.py --deviate --batch 3
 バッチ実行時にダイス有無・難易度の選択肢がなく `use_dice: True` / `normal` 固定だった問題。
 - バッチ開始前に `ask_use_dice()` / `ask_difficulty()` を1回だけ手入力
 - `BATCH_USE_DICE` / `BATCH_DIFFICULTY` グローバルで保持し、全セッションに適用
+
+### 2026年10月（commit 0e6c063）：PLAYER_SYSTEM_DEVIATE 固執ループ抑止
+
+deviate モードで「日常」「ミステリー」各1本が turn_limit（40ターン強制終了）に達した。
+原因：PLAYER_SYSTEM_DEVIATEに繰り返し抑止ルールが一切なく、同一対象への行動を動詞だけ変えながら無限ループした（例：首を絞める→力を込める→床に叩きつける→引きずり回す、を何十ターンも）。
+
+- PLAYER_SYSTEM_DEVIATEに「同じ対象への行動が動詞を変えながら3回続いた場合も、別の対象・別の場所への行動に切り替えること」を追加
+- 「直前と同じ対象・動作の組み合わせ禁止」「失敗2回連続で別対象へ」はDEVIATEの逸脱性維持のため追加しない
