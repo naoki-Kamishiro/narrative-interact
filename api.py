@@ -124,6 +124,37 @@ def generate_genre_title(genre: str = "") -> dict:
         return {"error": str(e)}
 
 
+def check_fixation(actions: list[str]) -> bool:
+    """直近3件のプレイヤー行動が同一対象への固執ループになっているか判定する。
+    LLMにyes/noで答えさせる。エラー時はFalseを返す（安全側に倒す）。
+    """
+    if len(actions) < 3:
+        return False
+    actions_text = "\n".join(f"{i+1}. {a}" for i, a in enumerate(actions))
+    prompt = (
+        f"以下はテキストRPGのプレイヤーの直近3つの行動です。\n\n"
+        f"{actions_text}\n\n"
+        f"これらの行動は、同じ対象に対して同じような行動を繰り返すループ状態になっていますか？\n"
+        f"「yes」か「no」の1単語のみで答えてください。"
+    )
+    messages = [
+        {"role": "system", "content": "あなたはテキストRPGの進行を補助するシステムです。"},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="local",
+            messages=messages,
+            max_tokens=4,
+            temperature=0.0,
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        return answer.startswith("yes")
+    except Exception:
+        return False
+
+
 def chat_json(messages: list) -> str:
     """JSON出力専用。プロット生成など内部処理用。"""
     stop_event = threading.Event()

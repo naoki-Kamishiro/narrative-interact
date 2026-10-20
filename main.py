@@ -10,7 +10,7 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat, chat_player, generate_genre_title
+from api import chat, chat_player, generate_genre_title, check_fixation
 import random
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message
@@ -218,6 +218,24 @@ def _build_api_messages(h: list) -> list:
             if DEBUG_MODE:
                 print(f"[BEAT] post-ending injection (turn {post_count})", file=sys.stderr)
         return msgs
+    # off/on/improvモード: 固執ループ検出→エンディング強制injection
+    if not _is_strong():
+        recent = _get_recent_player_actions(h, n=3)
+        if len(recent) >= 3 and check_fixation(recent):
+            msgs = list(hist.build_for_api(h))
+            injection = (
+                "プレイヤーが同一対象への行動を繰り返しループしている。"
+                "その固執の結末（失敗・消耗・状況の収束）を描写し、このターンでエンディングに導くこと。"
+                "最後の1行に「【エンディング】」とのみ出力すること。"
+            )
+            for i in reversed(range(len(msgs))):
+                if msgs[i]["role"] == "user":
+                    msgs[i] = dict(msgs[i])
+                    msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
+                    break
+            if DEBUG_MODE:
+                print("[FIXATION] loop detected: injecting ending prompt", file=sys.stderr)
+            return msgs
     return hist.build_for_api(h)
 
 
