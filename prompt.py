@@ -323,7 +323,6 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
 
         if ending:
             lines.append(f"- 着地点（情景のみ。動機・感情・テーマ語は含めない）: {ending}")
-            lines.append("- 着地点に含まれる主要人物・場面がまだ物語に登場していない間は、エンディングにしない")
 
         if not _beat_injection_mode:
             choices = plot.get("choices", [])
