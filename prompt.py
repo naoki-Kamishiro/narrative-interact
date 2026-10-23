@@ -214,7 +214,8 @@ PLOT_MODE_RULES = {
         "- プレイヤーが同一対象への行動を繰り返し、プロットの主要な葛藤に向かう気配がない場合、その固執の結末（失敗・消耗・周囲の変化・状況の収束）を描写してバッドエンドとしてエンディングに導いてよい\n"
         "- プレイヤーがプロットの主要な葛藤・目標と無関係な行動を複数ターン続け、物語が進展する気配がない場合も、その状況の収束としてエンディングに導いてよい\n"
         "- プレイヤーが主要な葛藤とは無関係な場所・状況で、物語として完結できる着地点（関係の変化・決断・帰着）に達した場合、GMはそれをエンディングとして受け入れてよい\n"
-        "- 直前のターンで新たな目標・手掛かり・情報が提示された場合、それを無視してエンディングにしない"
+        "- 直前のターンで新たな目標・手掛かり・情報が提示された場合、それを無視してエンディングにしない\n"
+        "- プレイヤーが「〜を無視する」「〜に向かわない」のように明示的に拒否した対象・方向は受理し、GMはその対象へ向かわせてはならない"
     ),
     "strong": (
         "- プロット上の重要要素は必ず物語内に残す\n"
@@ -239,6 +240,49 @@ PLOT_MODE_RULES = {
         "- 直前のターンで新たな目標・手掛かり・情報が提示された場合、それを無視してエンディングにしない"
     ),
 }
+
+def build_adaptive_replot_system_prompt(new_plot: dict, genre: str = "") -> str:
+    """adaptiveモードでプロット再生成後に使う軽量システムプロンプトを生成する。
+    元プロットのビート・反転等は渡さず、新着地点のみ渡す。
+    """
+    lines = [SYSTEM_GM_BASE]
+
+    # adaptive再生成後はstrongと同等のルールを適用
+    mode_rule = PLOT_MODE_RULES.get("strong", "")
+    if mode_rule:
+        lines.append("【物語の軸】")
+        lines.append(mode_rule)
+
+    if genre:
+        lines.append("【文体】")
+        lines.append(f"- ジャンル「{genre}」の読み手にとって自然な語り口・語彙の硬さ・文の長さで書く。")
+
+    if new_plot:
+        lines.append("")
+        lines.append("【新プロット（GMのみが知る設計図）】")
+        lines.append("※プレイヤーの逸脱を受けて再設計された物語の着地点。以下に向けて確実に完結させること。")
+
+        if new_plot.get("protagonist_goal"):
+            lines.append(f"- 主人公の現在の目標: {new_plot['protagonist_goal']}")
+        if new_plot.get("key_npc"):
+            lines.append(f"- 重要NPC: {new_plot['key_npc']}")
+        if new_plot.get("climax_situation"):
+            lines.append(f"- クライマックス: {new_plot['climax_situation']}")
+        if new_plot.get("ending_scene"):
+            lines.append(f"- 着地点（情景のみ）: {new_plot['ending_scene']}")
+
+        beats = new_plot.get("beats", [])
+        if beats:
+            lines.append("")
+            lines.append("【展開の流れ（ビート）】")
+            for b in beats:
+                if isinstance(b, dict):
+                    timing = b.get("timing", "")
+                    desc = b.get("description", "")
+                    lines.append(f"- {timing}: {desc}")
+
+    return "\n".join(lines)
+
 
 def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> str:
     """genre_traitsとplot_modeを反映した動的システムプロンプトを生成する。
@@ -445,49 +489,6 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             # theme_closure は内面・抽象語を含むためGMには渡さない
 
     return "\n".join(lines)
-
-def build_adaptive_replot_system_prompt(new_plot: dict, genre: str = "") -> str:
-    """adaptiveモードでプロット再生成後に使う軽量システムプロンプトを生成する。
-    元プロットのビート・反転等は渡さず、新着地点のみ渡す。
-    """
-    lines = [SYSTEM_GM_BASE]
-
-    # adaptive再生成後はstrongと同等のルールを適用
-    mode_rule = PLOT_MODE_RULES.get("strong", "")
-    if mode_rule:
-        lines.append("【物語の軸】")
-        lines.append(mode_rule)
-
-    if genre:
-        lines.append("【文体】")
-        lines.append(f"- ジャンル「{genre}」の読み手にとって自然な語り口・語彙の硬さ・文の長さで書く。")
-
-    if new_plot:
-        lines.append("")
-        lines.append("【新プロット（GMのみが知る設計図）】")
-        lines.append("※プレイヤーの逸脱を受けて再設計された物語の着地点。以下に向けて確実に完結させること。")
-
-        if new_plot.get("protagonist_goal"):
-            lines.append(f"- 主人公の現在の目標: {new_plot['protagonist_goal']}")
-        if new_plot.get("key_npc"):
-            lines.append(f"- 重要NPC: {new_plot['key_npc']}")
-        if new_plot.get("climax_situation"):
-            lines.append(f"- クライマックス: {new_plot['climax_situation']}")
-        if new_plot.get("ending_scene"):
-            lines.append(f"- 着地点（情景のみ）: {new_plot['ending_scene']}")
-
-        beats = new_plot.get("beats", [])
-        if beats:
-            lines.append("")
-            lines.append("【展開の流れ（ビート）】")
-            for b in beats:
-                if isinstance(b, dict):
-                    timing = b.get("timing", "")
-                    desc = b.get("description", "")
-                    lines.append(f"- {timing}: {desc}")
-
-    return "\n".join(lines)
-
 
 def build_plot_message(genre: str, title: str) -> str:
     return f"ジャンル: {genre}\nタイトル: {title}\n\n物語設計を行ってください。"

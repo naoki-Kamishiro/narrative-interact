@@ -168,7 +168,7 @@ def _do_adaptive_replot(h: list) -> None:
     if DEBUG_MODE:
         print("[ADAPTIVE] 逸脱を検出。プロット再生成を開始します。", file=sys.stderr)
 
-    # 直近20ターン分の会話履歴を渡す（systemは除く）
+    # 直近10ターン分の会話履歴を渡す（systemは除く）
     recent = [m for m in h if m["role"] in ("user", "assistant")][-20:]
     new_plot = regenerate_plot(recent, genre)
 
@@ -409,9 +409,10 @@ def _build_api_messages(h: list) -> list:
                     print(f"[ADAPTIVE] deviation_count={deviation_count}", file=sys.stderr)
 
                 if deviation_count >= 5:
-                    # プロット再生成 → beat着地モードへ
+                    # プロット再生成 → beat着地モードへ（到達カウントを記録）
                     state.update({"peak_deviation_count": deviation_count})
                     _do_adaptive_replot(h)
+                    # 再生成直後はビートキューの先頭を注入
                     s2 = state.get()
                     queue = s2.get("beat_queue", [])
                     ptr = s2.get("beat_ptr", 0)
@@ -436,9 +437,24 @@ def _build_api_messages(h: list) -> list:
                         print(f"[ADAPTIVE] warning injection at count={deviation_count}", file=sys.stderr)
                     return msgs
             else:
-                # 逸脱解消されたらカウントをリセット
-                if s.get("deviation_count", 0) > 0:
-                    state.update({"deviation_count": 0})
+                # 逸脱なし: カウントはリセットせず累積する
+                if DEBUG_MODE and s.get("deviation_count", 0) > 0:
+                    print(f"[ADAPTIVE] deviation: no (count stays at {s.get('deviation_count', 0)})", file=sys.stderr)
+
+    # off/adaptive(再生成前)/improvモード: ターン数過多→収束injection（25ターン超）
+    if not _is_strong():
+        turn_count = sum(1 for m in h if m["role"] == "user")
+        if turn_count > 25:
+            msgs = list(hist.build_for_api(h))
+            injection = "物語が長くなっている。現在の状況から自然にエンディングへ収束させること。"
+            for i in reversed(range(len(msgs))):
+                if msgs[i]["role"] == "user":
+                    msgs[i] = dict(msgs[i])
+                    msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
+                    break
+            if DEBUG_MODE:
+                print(f"[TURN_LIMIT] turn={turn_count}: injecting convergence prompt", file=sys.stderr)
+            return msgs
 
     # off/adaptive(再生成前)/improvモード・自動プレイ時のみ: 固執ループ検出→エンディング強制injection
     if not _is_strong() and AUTO_PLAY_MODE:
@@ -472,23 +488,6 @@ def _build_api_messages(h: list) -> list:
         else:
             # ループ解消されたらカウントリセット
             state.update({"fixation_count": 0})
-
-    # off/adaptive/improvモード: 25ターン超で毎ターン収束injectionを挿入
-    # h はシステムメッセージ + user/assistant ペアなので (len(h) - 1) // 2 でターン数を推定
-    if not _is_strong():
-        approx_turn = (len(h) - 1) // 2
-        if approx_turn > 25:
-            msgs = list(hist.build_for_api(h))
-            injection = "現在の状況から自然にエンディングへ収束させること。"
-            for i in reversed(range(len(msgs))):
-                if msgs[i]["role"] == "user":
-                    msgs[i] = dict(msgs[i])
-                    msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
-                    break
-            if DEBUG_MODE:
-                print(f"[TURN_LIMIT] approx_turn={approx_turn}: injecting convergence prompt", file=sys.stderr)
-            return msgs
-
     return hist.build_for_api(h)
 
 
@@ -566,7 +565,7 @@ def ask_plot_mode() -> str:
     print()
     print("物語の軸:")
     print(f"  1. プロット参照・自由{exp_note}")
-    print(f"  2. プロット参照・適応（逸脱を検出して現在地で物語を再構成）")
+    print(f"  2. プロット参照・適応（逸脱を検出して現在地で物語を再構成）{exp_note}")
     print("  3. プロット参照・強拘束（プロット強制回収）★初めてならこれを推奨")
     print(f"  4. プロットなし・即興{exp_note}")
     while True:
@@ -708,7 +707,8 @@ def save_session_json(h: list, title: str) -> None:
     import re as _re
     safe_title = _re.sub(r'[\\/:*?"<>|\s]', "_", title)
     safe_title = safe_title.strip("_") or "session"
-    filename = f"{safe_title}_{timestamp}.json"
+    play_mode = state.get().get("auto_play_mode", "manual")
+    filename = f"{safe_title}_{play_mode}_{timestamp}.json"
     data = {
         "state": state.get(),
         "history": h,
@@ -883,7 +883,8 @@ def run_single_session(plot_mode: str) -> None:
         _after_reply(reply)
 
         if check_ending(reply):
-            if (_is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))) and not state.get().get("ending_suppressed", False):
+            _use_beat_suppression = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
+            if _use_beat_suppression and not state.get().get("ending_suppressed", False):
                 s = state.get()
                 queue = s.get("beat_queue", [])
                 ptr = s.get("beat_ptr", 0)
@@ -1096,7 +1097,8 @@ def main():
             h = hist.add_assistant(h, reply)
             _after_reply(reply)
             if check_ending(reply):
-                if (_is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))) and not state.get().get("ending_suppressed", False):
+                _use_beat_suppression = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
+                if _use_beat_suppression and not state.get().get("ending_suppressed", False):
                     s = state.get()
                     queue = s.get("beat_queue", [])
                     ptr = s.get("beat_ptr", 0)
@@ -1161,8 +1163,9 @@ def main():
         _after_reply(reply)
 
         if check_ending(reply):
-            # strongモードのエンディング早出し抑止
-            if (_is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))) and not state.get().get("ending_suppressed", False):
+            # strong / adaptive再生成後のエンディング早出し抑止
+            _use_beat_suppression = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
+            if _use_beat_suppression and not state.get().get("ending_suppressed", False):
                 s = state.get()
                 queue = s.get("beat_queue", [])
                 ptr = s.get("beat_ptr", 0)
