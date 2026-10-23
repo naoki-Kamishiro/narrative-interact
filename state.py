@@ -21,6 +21,9 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "ending_suppressed": False,
         "fixation_count": 0,
         "fixation_ending": False,
+        "deviation_count": 0,
+        "peak_deviation_count": 0,
+        "adaptive_replotted": False,
     }
 
 def get() -> dict:
