@@ -126,6 +126,9 @@ def build_queue(plot: dict) -> list:
 
 def make_injection(beat: dict) -> str:
     """ビートから注入文を生成する。"""
+    # adaptive beat は独自の injection 文を持つ
+    if "injection" in beat:
+        return beat["injection"]
     t = beat["type"]
     tmpl = _TEMPLATES.get(t, "")
     if t == "character":
@@ -167,7 +170,8 @@ def inject(messages: list, queue: list, ptr: int) -> tuple[list, str | None]:
             msgs[i]["content"] = msgs[i]["content"] + f"\n（GMへの場面指示: {injection}）"
             break
 
-    debug = f"[BEAT] ptr={ptr} type={beat['type']} timing={beat['timing']}"
+    beat_type = beat.get("type", "adaptive")
+    debug = f"[BEAT] ptr={ptr} type={beat_type} timing={beat.get('timing', '-')}"
     return msgs, debug
 
 
@@ -208,7 +212,7 @@ def advance(queue: list, ptr: int, response: str) -> tuple[list, int]:
 
     beat = queue[actual_idx]
 
-    if beat["type"] == "character":
+    if beat.get("type") == "character":
         name = beat.get("name", "")
         if detect_character(response, name):
             queue[actual_idx]["done"] = True
@@ -244,7 +248,7 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
     戻り値: (更新後queue, 新ptr, 抑止したか)
     """
     # 未完了のcharacterビートだけ抽出
-    pending_chars = [b for b in queue[ptr:] if b["type"] == "character" and not b["done"]]
+    pending_chars = [b for b in queue[ptr:] if b.get("type") == "character" and not b["done"]]
 
     if not pending_chars:
         # 注入するものがない: エンディングを通す
@@ -252,7 +256,7 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
 
     # characterビートだけを残し、残りは破棄（done=Trueにして読み飛ばす）
     for i in range(ptr, len(queue)):
-        if queue[i]["type"] != "character":
+        if queue[i].get("type") != "character":
             queue[i]["done"] = True
 
     _debug(f"[BEAT] ending suppressed: {len(pending_chars)} character beat(s) remaining")
