@@ -426,3 +426,38 @@ GMが「情報獲得」を「目標達成」と誤解してエンディングを
 
 - off/on/improvの各PLOT_MODE_RULESに追加：「直前のターンで新たな目標・手掛かり・情報が提示された場合、それを無視してエンディングにしない」
 - strongには一切触れない
+
+### 2026年10月（commit 1b92343）：adaptiveモードを本流にマージ（onモードを置き換え）
+
+`narrative-interact-adaptive` フォークで検証済みの adaptive モードを本流 `narrative-interact` に移植。
+onモードを廃止し、adaptiveモードで置き換え（UI表示・内部 plot_mode 名ともに `adaptive`）。
+
+**adaptiveモードの設計思想**
+- 逸脱を「失敗」ではなく「物語の転換点」として扱う
+- 逸脱が大きいと判断したら直近の展開から新プロットを再生成し、beat制御で着地させる
+- 再生成後はstrongモードと同等の着地保証（ターン上限を実質的に回避）
+- ジャンル変化OK（例：ギャグ→神話）
+
+**逸脱検出の仕組み（2段階）**
+- 毎ターン `check_deviation()` を呼び出してyes/no判定（temperature=0.0, max_tokens=4）
+- deviation_count >= 3：警告injection（「エンディングの機会があれば迷わず終わらせること」）
+- deviation_count >= 5：`_do_adaptive_replot()` でプロット再生成 → beat制御に移行
+
+**変更ファイル（本流）**
+
+- `state.py`：`deviation_count` / `peak_deviation_count` / `adaptive_replotted` を追加
+- `api.py`：`check_deviation()` / `regenerate_plot()` を追加
+- `prompt.py`：PLOT_MODE_RULES の `"on"` → `"adaptive"` に変更、`build_adaptive_replot_system_prompt()` を追加
+- `main.py`：
+  - PLOT_MODE_LABELS の2番を adaptive に変更
+  - `_is_adaptive()` / `_get_plot_keywords()` / `_do_adaptive_replot()` / `_build_adaptive_beat_queue()` を追加
+  - `_build_api_messages()` に adaptive 逸脱検出→警告injection→再生成→beat着地ロジックを追加
+  - `_after_reply()` を adaptive_replotted 時もビート進行するよう更新
+  - エンディング抑止条件を adaptive_replotted 時にも適用（3箇所）
+  - 25ターン超の収束injection を追加（off/adaptive/improvのみ）
+
+**strongへの影響：ゼロ。** adaptive処理はすべて `_is_adaptive()` ブロックで完全分離。
+
+**UI変更**
+- adaptiveモードを「実験的」表示なしで提供（再生成後はbeat制御による着地保証があるため）
+- 逸脱検出・再生成のシステムメッセージはDEBUG_MODEのみstderrに出力（プレイヤーには見せない）
