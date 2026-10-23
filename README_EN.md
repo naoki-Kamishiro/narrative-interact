@@ -1,4 +1,4 @@
-# Narrative Interact
+# Narrative Interact v1.0.0
 
 An interactive fiction system that runs on a local LLM via LM Studio.
 

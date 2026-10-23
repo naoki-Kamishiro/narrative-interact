@@ -1,4 +1,4 @@
-# Narrative Interact
+# Narrative Interact v1.0.0
 
 [English README is here](README_EN.md)
 

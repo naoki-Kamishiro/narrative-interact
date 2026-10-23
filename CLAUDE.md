@@ -198,7 +198,7 @@ python main.py --deviate --batch 3
 
 対象ユーザー：ローカルLLM利用者（LM Studio使用者）
 ターゲットモデル：Gemma4 12B
-公開形式：未定
+公開形式：GitHub（v1.0.0）
 
 ---
 
