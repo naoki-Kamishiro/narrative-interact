@@ -95,7 +95,7 @@ On startup, you will be prompted for:
 | 1 | Plot reference · strict | Beats, twists, and failures are force-injected on schedule. Player freedom is maintained, but major plot elements are always resolved. **Recommended for first-time play** |
 | 2 | Plot reference · adaptive | Follows the plot but allows free play and deviation. If deviation grows large, the story is reconstructed from the current situation and guided to a conclusion. |
 | 3 | Plot reference · free | Plot is advisory only. Deviation is fine. Best for prioritizing player freedom above all else. |
-| 4 | No plot · improv | No plot is generated; the GM improvises freely. Every run produces a completely different story. |
+| 4 | No plot · improv | No plot is generated; the GM improvises freely. No constraints on the direction of the story. |
 
 **About the mode differences**
 
