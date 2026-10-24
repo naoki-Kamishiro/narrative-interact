@@ -533,13 +533,12 @@ PLOT_MODE_LABELS = {
 }
 
 def ask_plot_mode() -> str:
-    exp_note = "（実験的）（40ターンで強制終了する場合あり）"
     print()
     print("物語の軸:")
     print("  1. プロット参照・強拘束（プロット強制回収）★初めてならこれを推奨")
     print("  2. プロット参照・適応（逸脱を検出して現在地で物語を再構成）")
-    print(f"  3. プロット参照・自由{exp_note}")
-    print(f"  4. プロットなし・即興{exp_note}")
+    print("  3. プロット参照・自由（プロットに沿うよう誘導するが逸脱自由）")
+    print("  4. プロットなし・即興（GMが即興で物語を作る）")
     while True:
         choice = ask("選択 [1/2/3/4]: ")
         if choice in PLOT_MODE_LABELS:
