@@ -512,3 +512,16 @@ CLAUDE.md の「次のブラッシュアップ対象」をimprovに更新。
 **improv/deviateバッチ（5本）**
 全5本がend_reason: "ending"で正常終了。平均約30ターン。Gemini評価良好。1本のみ40ターン到達。
 根本問題（プロット拘束なしによる漂流リスク）は未解決のため「実験的モード」表示を維持。
+
+### 2026年10月（commit 9a064bc）：improvモード「あなたは～として」表示を追加・全モード表示順を統一
+
+improvモードでは`protagonist.get("name")`が常に空のため「あなたは～として、この物語を紡ぎます。」が表示されなかった。
+
+- `api.py` に `extract_protagonist_name(opening_scene)` を追加（max_tokens=16, temperature=0.0）
+  - GMが生成した開幕シーンから主人公名を抽出する軽量LLM呼び出し
+  - 名前が明示されていない場合は「主人公」を返す
+- `main.py` の主人公名表示ブロックを `call_gm()` の後に移動し全モードで統一
+  - improvは `extract_protagonist_name(reply)` で名前を取得して表示
+  - 他モードは `protagonist.get("name")` から取得（従来通り）
+  - 表示順：本文 → 「あなたは{name}として、この物語を紡ぎます。」（全モード共通）
+- strongへの影響ゼロ
