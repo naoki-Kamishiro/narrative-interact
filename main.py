@@ -795,7 +795,7 @@ def run_single_session(plot_mode: str) -> None:
         print()
 
     reply = call_gm(_build_api_messages(h))
-    if reply.startswith("[ERROR"):
+    if reply == "[CONTEXT_LIMIT]" or reply.startswith("[ERROR"):
         error_print("初回応答生成に失敗しました。このセッションをスキップします。")
         return
     h = hist.add_assistant(h, reply)
