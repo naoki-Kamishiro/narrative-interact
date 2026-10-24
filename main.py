@@ -10,7 +10,7 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot
+from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot, extract_protagonist_name
 import random
 from display import gm_print, system_print, error_print, hr
 from prompt import build_start_message, build_adaptive_replot_system_prompt
@@ -614,6 +614,12 @@ def start_new_game() -> tuple[list, str, str]:
     print()
 
     reply = call_gm(_build_api_messages(h))
+    # improvモード: 開始シーンから主人公名を抽出して表示
+    if plot_mode == "improv" and not reply.startswith("[ERROR"):
+        improv_name = extract_protagonist_name(reply)
+        if improv_name:
+            print(f"あなたは{improv_name}として、この物語を紡ぎます。")
+            print()
     if reply.startswith("[ERROR"):
         error_print("応答生成に失敗しました。/retryで再試行できます。")
         # 自動プレイ時: エラー文字列がプレイヤーLLMに渡らないよう空文字にする
