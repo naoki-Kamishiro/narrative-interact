@@ -605,21 +605,22 @@ def start_new_game() -> tuple[list, str, str]:
 
     print()
     print(f"── 「{title}」 開始 ──")
-    protagonist = plot.get("protagonist", {}) if plot else {}
-    if protagonist.get("name"):
-        name = protagonist["name"]
-        print(f"あなたは{name}として、この物語を紡ぎます。")
-        print()
     system_print("行き詰まったら /hint で行動候補を表示できます。")
     print()
 
     reply = call_gm(_build_api_messages(h))
-    # improvモード: 開始シーンから主人公名を抽出して表示
-    if plot_mode == "improv" and not reply.startswith("[ERROR"):
-        improv_name = extract_protagonist_name(reply)
-        if improv_name:
-            print(f"あなたは{improv_name}として、この物語を紡ぎます。")
-            print()
+    # 主人公名を表示（improvは開始シーンから抽出、他モードはプロットから取得）
+    if not reply.startswith("[ERROR"):
+        if plot_mode == "improv":
+            improv_name = extract_protagonist_name(reply)
+            if improv_name:
+                print(f"あなたは{improv_name}として、この物語を紡ぎます。")
+                print()
+        else:
+            protagonist = plot.get("protagonist", {}) if plot else {}
+            if protagonist.get("name"):
+                print(f"あなたは{protagonist['name']}として、この物語を紡ぎます。")
+                print()
     if reply.startswith("[ERROR"):
         error_print("応答生成に失敗しました。/retryで再試行できます。")
         # 自動プレイ時: エラー文字列がプレイヤーLLMに渡らないよう空文字にする
