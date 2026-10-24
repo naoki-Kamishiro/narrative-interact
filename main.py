@@ -521,9 +521,9 @@ def check_ending(reply: str) -> bool:
     return ENDING_MARKER in reply
 
 PLOT_MODE_LABELS = {
-    "1": ("off", "プロット参照・自由"),
+    "1": ("strong", "プロット参照・強拘束"),
     "2": ("adaptive", "プロット参照・適応（逸脱を検出して現在地で物語を再構成）"),
-    "3": ("strong", "プロット参照・強拘束"),
+    "3": ("off", "プロット参照・自由"),
     "4": ("improv", "プロットなし・即興"),
 }
 
@@ -531,9 +531,9 @@ def ask_plot_mode() -> str:
     exp_note = "（実験的）（40ターンで強制終了する場合あり）"
     print()
     print("物語の軸:")
-    print(f"  1. プロット参照・自由{exp_note}")
-    print(f"  2. プロット参照・適応（逸脱を検出して現在地で物語を再構成）")
-    print("  3. プロット参照・強拘束（プロット強制回収）★初めてならこれを推奨")
+    print("  1. プロット参照・強拘束（プロット強制回収）★初めてならこれを推奨")
+    print("  2. プロット参照・適応（逸脱を検出して現在地で物語を再構成）")
+    print(f"  3. プロット参照・自由{exp_note}")
     print(f"  4. プロットなし・即興{exp_note}")
     while True:
         choice = ask("選択 [1/2/3/4]: ")
