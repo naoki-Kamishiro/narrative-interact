@@ -47,6 +47,9 @@ def chat(messages: list) -> str:
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
+        err = str(e)
+        if "exceed_context_size_error" in err or "exceeds the available context size" in err:
+            return "[CONTEXT_LIMIT]"
         return f"[ERROR: {e}]"
     finally:
         stop_event.set()

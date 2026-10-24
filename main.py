@@ -111,10 +111,15 @@ def ask(prompt: str) -> str:
 
 def call_gm(messages: list, max_retries: int = 1) -> str:
     reply = chat(messages)
+    # コンテキスト上限はリトライせず即返す
+    if reply == "[CONTEXT_LIMIT]":
+        return "[CONTEXT_LIMIT]"
     attempt = 0
     while (reply.startswith("[ERROR") or not reply.strip()) and attempt < max_retries:
         system_print("応答生成に失敗したため再試行します...")
         reply = chat(messages)
+        if reply == "[CONTEXT_LIMIT]":
+            return "[CONTEXT_LIMIT]"
         attempt += 1
     # 空応答はエラー扱いにする
     if not reply.strip():
@@ -847,6 +852,11 @@ def run_single_session(plot_mode: str) -> None:
         h = hist.add_user(h, user_msg)
 
         reply = call_gm(_build_api_messages(h))
+        if reply == "[CONTEXT_LIMIT]":
+            system_print("コンテキスト上限に達し続行不可能の為、物語をここで終了します。")
+            state.update({"end_reason": "context_limit"})
+            save_session_json(h, title)
+            break
         if reply.startswith("[ERROR"):
             error_print("応答生成に失敗しました。スキップして続行します。")
             h.pop()
@@ -1063,6 +1073,11 @@ def main():
                             queue[new_ptr]["done"] = False
                         state.update({"beat_ptr": new_ptr, "beat_queue": queue})
             reply = call_gm(_build_api_messages(h))
+            if reply == "[CONTEXT_LIMIT]":
+                system_print("コンテキスト上限に達し続行不可能の為、物語をここで終了します。")
+                state.update({"end_reason": "context_limit"})
+                save_mod.save(state.get(), h)
+                break
             if reply.startswith("[ERROR"):
                 error_print("応答生成に失敗しました。/retryで再試行できます。")
                 pending_failed = True
