@@ -223,6 +223,38 @@ def regenerate_plot(recent_history: list[dict], genre: str) -> str:
         return {}
 
 
+def extract_protagonist_name(opening_scene: str) -> str:
+    """improvモード用: GMが生成した開始シーンから主人公名を抽出する。
+    名前が不明な場合は空文字を返す。
+    """
+    prompt = (
+        f"以下はテキストRPGの冒頭シーンです。\n\n"
+        f"{opening_scene}\n\n"
+        f"このシーンでプレイヤーが操作する主人公の名前を1つだけ答えてください。\n"
+        f"名前が明示されていない場合は「主人公」と答えてください。\n"
+        f"名前のみを出力してください。説明・句読点・括弧は不要です。"
+    )
+    messages = [
+        {"role": "system", "content": "あなたは小説の登場人物を識別するアシスタントです。"},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="local",
+            messages=messages,
+            max_tokens=16,
+            temperature=0.0,
+        )
+        name = response.choices[0].message.content.strip()
+        # 余分な記号・改行を除去
+        import re as _re
+        name = _re.sub(r'[「」『』【】\(\)（）\n]', '', name).strip()
+        return name if name else ""
+    except Exception:
+        return ""
+
+
 def chat_json(messages: list) -> str:
     """JSON出力専用。プロット生成など内部処理用。"""
     stop_event = threading.Event()
