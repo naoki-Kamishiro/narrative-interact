@@ -1,6 +1,6 @@
 """
 コンソール色分け表示モジュール。
-GM地の文：黄　登場人物セリフ（「」内）：白　システム：青　エラー：赤　GMキャラコメント：太字黄
+GM地の文：黄　登場人物セリフ（「」内）：白　システム：青　エラー：赤　GMキャラコメント：シアン　転換点：太字黄
 """
 
 import re
@@ -12,6 +12,7 @@ WHITE   = "\033[97m"
 BLUE    = "\033[94m"
 RED     = "\033[91m"
 DIM     = "\033[2m"
+CYAN        = "\033[96m"
 BOLD_YELLOW = "\033[1;33m"
 MAGENTA = "\033[95m"
 HR      = DIM + "─" * 60 + RESET
@@ -43,12 +44,12 @@ def gm_print(text: str) -> None:
     print(HR)
 
 def gm_char_print(text: str) -> None:
-    """GMキャラクターの一言コメントを表示する（太字黄色）。"""
-    print(BOLD_YELLOW + f"GM: {text}" + RESET)
+    """GMキャラクターの一言コメントを表示する（シアン）。"""
+    print(CYAN + f"GM: {text}" + RESET)
 
 def gm_turning_point_print(text: str) -> None:
-    """転換点の描写強化メッセージを表示する（マゼンタ）。"""
-    print(MAGENTA + text + RESET)
+    """転換点の描写強化メッセージを表示する（太字黄色）。"""
+    print(BOLD_YELLOW + text + RESET)
 
 def system_print(text: str) -> None:
     print(BLUE + f"[システム: {text}]" + RESET)
