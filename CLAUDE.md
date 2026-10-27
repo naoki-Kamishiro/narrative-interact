@@ -628,6 +628,19 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 `adaptive`（再生成前）はどちらにも該当しないためスキップされていた。
 - `is_improv` を `is_llm_judge` に変更し、`improv OR (adaptive かつ 再生成前)` の条件でLLM判定を行うよう修正
 
+### 2026年10月（今セッション）：GMキャラクター・転換点をstrongモードにも対応
+
+offモードのbuild_queue未呼び出しバグ（GMキャラコメント未発動）を修正し、あわせてstrongにも対応。
+
+**offモードbuild_queue修正（commit eb00e95）**
+offモードで `beat_queue` が常に空だったため、`beat_ptr` が進まず転換点が検出されず、GMキャラコメントが一度も発動しなかった。
+- `start_new_game` / `load_session` / `run_single_session` の3箇所で `plot_mode == "strong"` → `plot_mode in ("strong", "off")` に変更
+
+**strongモードへの対応（commit 9601314）**
+`_handle_gm_char_and_turning_point()` 呼び出しを `if not _is_strong():` でガードしていたため、strongでGMキャラコメントと転換点injectionが発動しなかった。
+- 2箇所の `if not _is_strong():` ガードを削除
+- strongのプロンプト・beat制御・プロット生成には一切触れておらず、凍結ルールに抵触しない変更
+
 ---
 
 ### 次バージョンリリース方針（v1.1.0予定）
