@@ -657,6 +657,15 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             if DEBUG_MODE:
                 label = GM_CHAR_LABELS.get(gm_character, gm_character)
                 print(f"[GM_CHAR] {label}: {comment}", file=sys.stderr)
+            # コメントをstateに蓄積（JSONログに残す）
+            s = state.get()
+            log = list(s.get("gm_char_log", []))
+            log.append({
+                "turn": s.get("turn_count", 0),
+                "character": gm_character,
+                "comment": comment,
+            })
+            state.update({"gm_char_log": log})
 
     # 転換点描写強化フラグをstateに記録
     if is_turning_point:

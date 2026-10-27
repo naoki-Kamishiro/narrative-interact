@@ -25,6 +25,7 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "gm_character": "none",
         "turning_point_triggered": False,
         "turning_point_injected": False,
+        "gm_char_log": [],
     }
 
 def get() -> dict:
