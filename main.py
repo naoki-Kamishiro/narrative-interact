@@ -462,7 +462,7 @@ def _build_api_messages(h: list) -> list:
 
     msgs = list(hist.build_for_api(h))
 
-    # 転換点描写強化injection（turning_point_triggeredが立っている最初のターンのみ）
+    # 転換点描写強化injection（turning_point_triggeredが立っているターン）
     s = state.get()
     if s.get("turning_point_triggered", False) and not s.get("turning_point_injected", False):
         injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。文字数制限は解除する。"
@@ -471,7 +471,7 @@ def _build_api_messages(h: list) -> list:
                 msgs[i] = dict(msgs[i])
                 msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
                 break
-        state.update({"turning_point_injected": True})
+        state.update({"turning_point_injected": True, "turning_point_triggered": False})
         if DEBUG_MODE:
             print("[TURNING] turning point injection applied", file=sys.stderr)
 
@@ -481,13 +481,14 @@ def _build_api_messages(h: list) -> list:
 def _after_reply(reply: str) -> None:
     """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
     is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
-    if not is_beat_mode:
-        return
-    s = state.get()
-    queue = s.get("beat_queue", [])
-    ptr = s.get("beat_ptr", 0)
-    queue, ptr = beat_mod.advance(queue, ptr, reply)
-    state.update({"beat_queue": queue, "beat_ptr": ptr})
+    if is_beat_mode:
+        s = state.get()
+        queue = s.get("beat_queue", [])
+        ptr = s.get("beat_ptr", 0)
+        queue, ptr = beat_mod.advance(queue, ptr, reply)
+        state.update({"beat_queue": queue, "beat_ptr": ptr})
+    # 転換点injectionフラグをリセット（次の転換点で再発火できるよう）
+    state.update({"turning_point_injected": False})
 
 
 def _build_user_msg(action: str, dice_result: dict | None) -> str:
@@ -657,8 +658,8 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
                 label = GM_CHAR_LABELS.get(gm_character, gm_character)
                 print(f"[GM_CHAR] {label}: {comment}", file=sys.stderr)
 
-    # 転換点描写強化フラグをstateに記録（1-per-session）
-    if is_turning_point and not turning_triggered:
+    # 転換点描写強化フラグをstateに記録
+    if is_turning_point:
         state.update({"turning_point_triggered": True})
         if DEBUG_MODE:
             print("[TURNING] turning_point_triggered = True", file=sys.stderr)
