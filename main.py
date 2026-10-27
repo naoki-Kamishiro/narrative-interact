@@ -661,7 +661,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             s = state.get()
             log = list(s.get("gm_char_log", []))
             log.append({
-                "turn": s.get("turn_count", 0),
+                "turn": sum(1 for m in h if m["role"] == "user"),
                 "character": gm_character,
                 "comment": comment,
             })
