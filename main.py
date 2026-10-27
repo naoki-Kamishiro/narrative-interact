@@ -626,7 +626,6 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
     """
     s = state.get()
     gm_character = s.get("gm_character", "none")
-    turning_triggered = s.get("turning_point_triggered", False)
 
     # beatモード（strong/adaptive再生成後/off）での転換点検出: コード側で判定
     is_beat_mode = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False)) or _is_off()
@@ -644,11 +643,10 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             if prev_beat and prev_beat.get("done", False):
                 is_turning_point = True
     elif is_improv:
-        # improvは毎ターンLLMで判定（1-per-sessionのため未発火時のみ）
-        if not turning_triggered:
-            is_turning_point = check_turning_point(h, action)
-            if DEBUG_MODE and is_turning_point:
-                print("[TURNING] turning point detected (improv)", file=sys.stderr)
+        # improvは毎ターンLLMで判定
+        is_turning_point = check_turning_point(h, action)
+        if DEBUG_MODE and is_turning_point:
+            print("[TURNING] turning point detected (improv)", file=sys.stderr)
 
     # GMキャラクターコメント（turning_pointの場合のみ）
     if is_turning_point and gm_character != "none":
