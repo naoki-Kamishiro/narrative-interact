@@ -61,6 +61,7 @@ _batch_genre_queue: list[str] = []  # シャッフル済みキュー
 # バッチ用ダイス設定（開始前に1回だけ手入力）
 BATCH_USE_DICE: bool = True
 BATCH_DIFFICULTY: str = "normal"
+BATCH_GM_CHARACTER: str = "none"
 
 PLAYER_SYSTEM_NORMAL = (
     "あなたはナラティブインタラクトシステムのプレイヤーです。\n"
@@ -649,8 +650,8 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             if DEBUG_MODE and is_turning_point:
                 print("[TURNING] turning point detected (improv)", file=sys.stderr)
 
-    # GMキャラクターコメント（turning_pointの場合のみ、AUTO_PLAY_MODE時は表示しない）
-    if is_turning_point and gm_character != "none" and not AUTO_PLAY_MODE:
+    # GMキャラクターコメント（turning_pointの場合のみ）
+    if is_turning_point and gm_character != "none":
         comment = generate_gm_char_comment(action, h, gm_character)
         if comment:
             gm_char_print(comment)
@@ -869,7 +870,8 @@ def run_single_session(plot_mode: str) -> None:
 
     state.init(genre, title, plot, plot_mode)
     state.update({"use_dice": BATCH_USE_DICE, "difficulty_preset": difficulty_preset,
-                  "auto_play_mode": AUTO_PLAY_MODE or "manual"})
+                  "auto_play_mode": AUTO_PLAY_MODE or "manual",
+                  "gm_character": BATCH_GM_CHARACTER})
 
     if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
@@ -1041,11 +1043,12 @@ def main():
         plot_mode = ask_plot_mode()
         print()
         # ダイス設定を1回だけ手入力
-        global BATCH_USE_DICE, BATCH_DIFFICULTY
+        global BATCH_USE_DICE, BATCH_DIFFICULTY, BATCH_GM_CHARACTER
         BATCH_USE_DICE = ask_use_dice()
         if BATCH_USE_DICE:
             BATCH_DIFFICULTY = ask_difficulty()
             dice_mod.set_difficulty_preset(BATCH_DIFFICULTY)
+        BATCH_GM_CHARACTER = ask_gm_character()
         print()
         for i in range(BATCH_COUNT):
             print(f"═══ バッチ {i+1}/{BATCH_COUNT} ═══")
