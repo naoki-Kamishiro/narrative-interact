@@ -1,0 +1,154 @@
+# Narrative Interact — Gemini ハンドオフ文書
+**発行日：2026-10-27（セッション session_01RKyUp4sTCBCsw1w27GGkwy）**
+
+---
+
+## プロジェクト概要
+
+LM Studio用インタラクティブフィクションシステム。  
+ジャンルとタイトルを入力するだけでGM（LLM）が物語を生成し、プレイヤーが行動を入力して進行する。  
+対象モデル：Gemma4 12B（LM Studio経由）  
+リポジトリ：https://github.com/naoki-Kamishiro/narrative-interact
+
+---
+
+## 現在のステータス：**v1.1.0 動作試験中**
+
+v1.0.0（2026-10-26リリース済み）に以下の新機能を追加し、動作試験を行っている段階。  
+試験完了後にv1.1.0としてリリース予定。
+
+### 全モード検証ステータス（2026-10-24時点・v1.0.0基準）
+
+| モード | 状態 | 検証結果 |
+|--------|------|---------|
+| strong（強拘束） | **凍結** | 5本全ending正常終了・平均11〜12ターン |
+| adaptive（適応） | 完了 | 通常・逸脱各5本全ending正常終了 |
+| off（誘導） | 完了 | 通常・逸脱各5本全ending正常終了・平均30ターン |
+| improv（即興） | 完了 | 通常・逸脱各5本全ending正常終了・平均30ターン |
+
+- 40ターン到達ケースはauto_playのプレイヤーLLM固有の細切れ行動が原因。手動プレイでは再現しない
+- 「実験的モード」表示は全モードで廃止済み
+
+---
+
+## 今セッションで実施した変更（v1.0.0リリース後）
+
+### 1. GMキャラクター機能（複数コミット）
+
+**概要**：プレイヤーの行動に対し、選択したGMキャラクターが一言コメントを返す機能。本文生成とは完全に独立した別LLM呼び出し。
+
+**選択肢**：
+- `none`：コメントなし（LLM呼び出し自体をスキップ）
+- `tsukkomi`（ツッコミ）：行動の矛盾・ご都合主義にツッコミを入れる
+- `cynical`（シニカル）：皮肉で冷静な観察者
+- `worrier`（心配性）：主人公の安否を過剰に心配する
+
+**実装ファイル**：
+- `state.py`：`gm_character`（"none"/"tsukkomi"/"cynical"/"worrier"）を追加
+- `display.py`：`gm_char_print()`（シアン表示）を追加
+- `api.py`：`GM_CHAR_PROMPTS`・`GM_CHAR_LABELS` dict、`generate_gm_char_comment()`を追加（temperature=0.9, max_tokens=32）
+- `main.py`：`GM_CHARACTER_LABELS` dict、`ask_gm_character()`を追加。ゲーム開始時にAUTO_PLAY_MODE以外で選択画面を表示
+
+**注意**：AUTO_PLAY_MODE時はコメント生成・表示をスキップ（バッチログに混入させない）。ただしバッチ実行時は `BATCH_GM_CHARACTER` グローバルで選択を保持し、表示有効。
+
+### 2. 転換点による描写強化（複数コミット）
+
+**概要**：ビートが進んだターンや物語の転換点を検出し、GMへのinjectionで描写を強化する機能。
+
+**転換点の検出方式**：
+- **beatモード**（strong / adaptive再生成後 / off）：`beat_ptr > 0` かつ直前ビートdone → 転換点
+- **LLM判定モード**（improv / adaptive再生成前）：`check_turning_point()`（temperature=0.0, max_tokens=4）
+
+**injection内容**（ターンのユーザーメッセージ末尾に追加）：
+```
+このターンは物語の転機です。通常より詳細に、丁寧に描写すること。500字以内とすること。
+```
+
+**表示デザイン**：
+- GMキャラコメントはシアン（`gm_char_print()`）で表示
+- 転換点のGM本文の色は変更しない（スポイラー防止）
+
+**実装ファイル**：
+- `state.py`：`turning_point_triggered`・`turning_point_injected` フラグを追加
+- `api.py`：`check_turning_point()`を追加
+- `main.py`：`_handle_gm_char_and_turning_point(action, h)` を追加・呼び出し
+
+### 3. offモードのbuild_queue未呼び出しバグ修正（commit eb00e95）
+
+**症状**：offモードでGMキャラコメントも転換点も一度も発動しない。
+
+**原因**：`beat_mod.build_queue(plot)` の呼び出し条件が `plot_mode == "strong"` のみだったため、offモードでは `beat_queue` が常に空のままだった。`beat_ptr` が進まず、転換点の判定条件 `ptr > 0` が永遠にFalseになっていた。
+
+**修正**：`start_new_game` / `load_session` / `run_single_session` の3箇所で `plot_mode == "strong"` → `plot_mode in ("strong", "off")` に変更。
+
+### 4. strongモードのガード削除（commit 9601314）
+
+**背景**：`_handle_gm_char_and_turning_point()` の呼び出しを `if not _is_strong():` でガードしていたため、strongでGMキャラコメントと転換点injectionが発動しなかった。
+
+**修正**：手動プレイループと `run_single_session()` の2箇所から `if not _is_strong():` ガードを削除。
+
+**影響範囲確認**：strongのプロンプト・beat制御・プロット生成には一切触れておらず、凍結ルールに抵触しない変更。
+
+---
+
+## 最新コミット一覧（直近10件）
+
+```
+d4f0094 docs: CLAUDE.mdに今セッションの修正履歴を追記
+9601314 feat: GMキャラクター・転換点をstrongモードにも対応
+eb00e95 fix: offモードでbuild_queueを呼び出すよう修正（GMキャラコメント未発動バグ修正）
+7d48b1d main: 転換点injectionの文字数制限を「500字以内」に明示（無制限解除による出力肥大化の対処）
+0bd18c8 display: 転換点の本文色変更を廃止、GMキャラコメントと連動する設計に統一
+53d8587 display: 転換点描写を太字黄色に変更、GMキャラコメントをシアンに戻す
+01ebe6c display: GMキャラコメントの色をシアンから太字黄色に変更（視認性改善）
+00bce2c Fix turning point never firing in off/adaptive/improv modes
+a245e9e README: 転換点色変更をGMキャラから独立した説明に修正
+ed126c3 README: 転換点ターンのGM本文マゼンタ表示を記載
+```
+
+---
+
+## 不変のルール（次セッションも必須）
+
+1. **strongモードは完全凍結。プロンプト・コード・設定のいずれも変更禁止**
+2. **実装前に必ずユーザーに確認を取ること**
+3. **ファイルを変更したら必ずgit pushすること**
+4. **新セッション開始時はCLAUDE.mdを最初に読むこと**
+
+---
+
+## 残存問題（未解決・対処済み）
+
+### 問題A：GM地の文への内面・意味付けの混入（抑制済み・確率的に発生）
+### 問題B：着地点先取り（抑制済み・確率的に発生）
+### 問題C：プレイヤーLLMの対象言い換えループ（抑制済み・モデル依存）
+### 問題D：off/improvで40ターン到達することがある（auto_play固有・手動プレイでは発生しない）
+
+---
+
+## 想定される次のアクション
+
+1. **GMキャラクター・転換点機能の動作試験完了** → v1.1.0リリース
+2. **v1.1.0リリース手順**：
+   - README.md / README_EN.md のタイトルを `v1.1.0` に変更
+   - `git tag v1.1.0` でタグを打つ
+   - `git push origin v1.1.0` でGitHubにタグを上げる
+   - GitHubのReleasesページで `v1.1.0` のリリースを作成
+
+---
+
+## ファイル構成（参考）
+
+| ファイル | 役割 |
+|---------|------|
+| main.py | エントリポイント。ゲームループ、コマンド処理、AUTO_PLAY_MODE制御 |
+| prompt.py | SYSTEM_GM_BASE、build_start_message()、PLOT_MODE_RULES |
+| api.py | LM Studio APIへのchat()、chat_player()等 |
+| state.py | ゲーム状態 |
+| history.py | 会話履歴管理 |
+| plot.py | プロット生成 |
+| beat.py | ビート管理 |
+| save.py | セーブ/ロード |
+| display.py | 表示ユーティリティ |
+| dice.py | ダイス判定 |
+| config.py | LM Studio接続設定 |
