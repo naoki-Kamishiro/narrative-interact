@@ -44,8 +44,8 @@ def gm_print(text: str) -> None:
     print(HR)
 
 def gm_char_print(text: str) -> None:
-    """GMキャラクターの一言コメントを表示する（シアン）。"""
-    print(CYAN + f"GM: {text}" + RESET)
+    """GMキャラクターの一言コメントを表示する（プレフィックスは通常GMと同じ青、コメント本文はシアン）。"""
+    print(BLUE + "GM:" + RESET + " " + CYAN + text + RESET)
 
 def gm_turning_point_print(text: str) -> None:
     """転換点の描写強化メッセージを表示する（太字黄色）。"""

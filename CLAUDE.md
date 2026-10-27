@@ -681,3 +681,29 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
 **原因**：`_handle_gm_char_and_turning_point()` 内で `s.get("turn_count", 0)` を参照していたが、`turn_count` は `state.init()` に定義されていないキーのためデフォルト値0が常に返っていた。
 
 **修正**：`s.get("turn_count", 0)` → `sum(1 for m in h if m["role"] == "user")` に変更。引数 `h`（history）のuserメッセージ数から直接ターン数を算出するよう修正。
+
+### 2026年10月（今セッション）：GMキャラ2種追加・選択UIのカーソルキー化・GM:色統一・README更新
+
+**GMキャラクター2種追加**
+- `all_positive`（全肯定）：何をやっても無条件に褒める。「天才！」「完璧な判断！」
+- `easygoing`（のんき）：緊迫感ゼロのマイペース。「まあなんとかなるでしょ。」「ゆっくりいこう。」
+- `api.py` の `GM_CHAR_PROMPTS` / `GM_CHAR_LABELS` に追加
+
+**GMキャラクター選択UIをカーソルキー選択に変更**
+- `readchar`（クロスプラットフォーム対応）を使用
+- ↑↓キーで選択、Enterで決定
+- `readchar`未インストール時は番号入力にフォールバック
+- `requirements.txt` に `readchar` を追加
+- `main.py` の `GM_CHARACTER_LABELS` dict を `GM_CHARACTER_OPTIONS` リストに変更
+- `_select_with_cursor()` 関数を追加、`ask_gm_character()` を書き換え
+
+**GM:プレフィックスの色統一**
+- `display.py` `gm_char_print()`：`GM:` を通常GMと同じ青（BLUE）に、コメント本文はシアン（CYAN）のまま
+- 変更前：`CYAN + "GM: {text}"` → 変更後：`BLUE + "GM:" + RESET + " " + CYAN + text`
+
+**README.md / README_EN.md 更新**
+- 動作環境に「対応OS：Windows / macOS / Linux」を追記
+- `pip install -r requirements.txt` の行に `readchar` の記載を追加
+- GMキャラクター選択表に全肯定・のんきを追加
+- コンソール表示の説明を `GM:` 青・本文シアンに更新
+- GMキャラクター選択が↑↓キー選択になった旨を追記

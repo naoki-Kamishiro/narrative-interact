@@ -591,27 +591,77 @@ def ask_difficulty() -> str:
             return preset
         system_print("1〜3のいずれかを入力してください。")
 
-GM_CHARACTER_LABELS = {
-    "1": ("none",     "なし"),
-    "2": ("tsukkomi", "ツッコミ"),
-    "3": ("cynical",  "シニカル"),
-    "4": ("worrier",  "心配性"),
-}
+GM_CHARACTER_OPTIONS = [
+    ("none",         "なし"),
+    ("tsukkomi",     "ツッコミ（行動を面白がって乗る）"),
+    ("cynical",      "シニカル（斜に構えた一言）"),
+    ("worrier",      "心配性（常にハラハラ）"),
+    ("all_positive", "全肯定（何をやっても褒める）"),
+    ("easygoing",    "のんき（緊迫感ゼロ、マイペース）"),
+]
+
+def _select_with_cursor(title: str, options: list[tuple[str, str]]) -> tuple[str, str]:
+    """↑↓キーで選択、Enterで決定するインタラクティブ選択UI。
+    options: [(key, label), ...]
+    戻り値: (key, label)
+    readcharが使えない場合は番号入力にフォールバック。
+    """
+    try:
+        import readchar
+    except ImportError:
+        # フォールバック：番号入力
+        print()
+        print(title)
+        for i, (_, label) in enumerate(options, 1):
+            print(f"  {i}. {label}")
+        while True:
+            choice = ask(f"選択 [1-{len(options)}]: ")
+            if choice.isdigit() and 1 <= int(choice) <= len(options):
+                idx = int(choice) - 1
+                return options[idx]
+            system_print(f"1〜{len(options)}のいずれかを入力してください。")
+
+    idx = 0
+
+    def _render(current: int):
+        # カーソルを先頭に戻して再描画
+        lines = len(options) + 2
+        sys.stdout.write(f"\033[{lines}A\033[J")
+        print(title)
+        for i, (_, label) in enumerate(options):
+            prefix = "  > " if i == current else "    "
+            print(f"{prefix}{label}")
+        print("  ↑↓で選択、Enterで決定")
+        sys.stdout.flush()
+
+    # 初回描画
+    print()
+    print(title)
+    for i, (_, label) in enumerate(options):
+        prefix = "  > " if i == idx else "    "
+        print(f"{prefix}{label}")
+    print("  ↑↓で選択、Enterで決定")
+    sys.stdout.flush()
+
+    while True:
+        key = readchar.readkey()
+        if key == readchar.key.UP:
+            idx = (idx - 1) % len(options)
+            _render(idx)
+        elif key == readchar.key.DOWN:
+            idx = (idx + 1) % len(options)
+            _render(idx)
+        elif key in (readchar.key.ENTER, "\r", "\n"):
+            return options[idx]
+
 
 def ask_gm_character() -> str:
-    print()
-    print("GMキャラクター（転換点で一言コメントを表示）:")
-    print("  1. なし")
-    print("  2. ツッコミ（行動を面白がって乗る）")
-    print("  3. シニカル（斜に構えた一言）")
-    print("  4. 心配性（常にハラハラ）")
-    while True:
-        choice = ask("選択 [1/2/3/4]: ")
-        if choice in GM_CHARACTER_LABELS:
-            key, label = GM_CHARACTER_LABELS[choice]
-            system_print(f"GMキャラクター: {label}")
-            return key
-        system_print("1〜4のいずれかを入力してください。")
+    key, label = _select_with_cursor(
+        "GMキャラクター（転換点で一言コメントを表示）:",
+        GM_CHARACTER_OPTIONS,
+    )
+    system_print(f"GMキャラクター: {label.split('（')[0].strip()}")
+    return key
 
 
 def _is_off() -> bool:
