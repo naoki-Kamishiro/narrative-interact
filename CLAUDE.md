@@ -673,3 +673,11 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
   {"turn": 7, "character": "tsukkomi", "comment": "また同じことしてる…"}
 ]
 ```
+
+### 2026年10月（commit 2e96df4）：gm_char_logのturnが常に0になるバグを修正
+
+サンプルログ確認で `gm_char_log` の全エントリが `"turn": 0` になっていることが発覚。
+
+**原因**：`_handle_gm_char_and_turning_point()` 内で `s.get("turn_count", 0)` を参照していたが、`turn_count` は `state.init()` に定義されていないキーのためデフォルト値0が常に返っていた。
+
+**修正**：`s.get("turn_count", 0)` → `sum(1 for m in h if m["role"] == "user")` に変更。引数 `h`（history）のuserメッセージ数から直接ターン数を算出するよう修正。
