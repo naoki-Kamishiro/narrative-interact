@@ -542,29 +542,30 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 - end_reason="context_limit" として記録
 - バッチ時は該当セッションのみ終了し次セッションへ継続
 
----
+### 2026年10月（今セッション）：GMキャラクター機能・転換点による描写強化を実装
 
-## 次期機能構想：GMキャラクター機能
+**GMキャラクター機能**
+プレイヤーの行動に対し、選択したGMキャラクターが一言コメントを返す機能を実装。本文生成とは完全に独立した別呼び出し。
 
-### 概要
-プレイヤーの行動に対してGMが一言コメントを返す機能。本文生成とは完全に独立した別呼び出し。既存の物語本文・ルール・全モードに一切影響しない。
+- `state.py`：`gm_character`（"none"/"tsukkomi"/"cynical"/"worrier"）を追加
+- `display.py`：`gm_char_print()`（シアン表示）、`gm_turning_point_print()`（マゼンタ表示）を追加
+- `api.py`：`GM_CHAR_PROMPTS`・`GM_CHAR_LABELS` dict、`generate_gm_char_comment()` を追加（temperature=0.9, max_tokens=32）
+- `main.py`：`GM_CHARACTER_LABELS` dict、`ask_gm_character()` を追加。`start_new_game()` でAUTO_PLAY_MODE以外の時に選択画面を表示
+- AUTO_PLAY_MODE時はコメント生成・表示をスキップ（バッチログに混入させない）
+- キャラクターなし（"none"）選択時はLLM呼び出し自体をスキップ
 
-### モード選択（ゲーム開始時に追加）
-- なし：現在のまま（GMは表に出ない）
-- キャラクター選択：以下から1つ選ぶ
+**転換点による描写強化**
+ビートが進んだターン（strong/adaptive/off）またはLLM判定で転換点を検出したターン（improv）に、GMへのinjectionで描写を強化する機能を実装。
 
-### キャラクター（初期3種、好評なら増やす）
-- ツッコミ：プレイヤーの行動を面白がって乗る。「そうきたか。」「的確なボケだ」
-- シニカル：斜に構えた一言。「まあ、そういう手もあるか」「…そうですか」
-- 心配性：常にハラハラしている。「え、そこで寝るの…？」「ほんとうにだいじょうぶかな」
-
-### 仕様
-- 転換点判定（yes/no軽量呼び出し）→ yesのときのみ一言生成・表示
-- 表示は `GM: そうきたか。` のみ（キャラ名は表示しない、選択済みのため）
-- 本文生成前に表示→その後GM本文生成
-- DEBUGモード時は `[GM_CHAR] ツッコミ: そうきたか。` をstderrに出力
-- 表示色はgm_print()とは別色（display.pyに`gm_char_print()`を追加）
-- セーブ・ロード時にキャラ設定を維持（state.pyに`gm_character`を追加）
-
-### 将来候補キャラクター
-毒舌・全肯定・不安定・寡黙・大げさ・ユーモア・神経質・淡泊
+- `state.py`：`turning_point_triggered`・`turning_point_injected` フラグを追加
+- `api.py`：`check_turning_point()` を追加（improv用LLM判定、temperature=0.0, max_tokens=4）
+- `main.py`：`_handle_gm_char_and_turning_point(action, h)` を追加
+  - ビートモード（strong/adaptive-replotted/off）：beat_ptr > 0 かつ直前ビートdone = 転換点
+  - improvモード：`check_turning_point()` 判定（未発動の場合のみ）
+  - 転換点検出時：GMキャラコメント生成（gm_characterが"none"でない場合）＋`turning_point_triggered`をTrueに
+- `_build_api_messages()` 末尾に転換点injection追加
+  - `turning_point_triggered=True` かつ `turning_point_injected=False` のターンのみ発火
+  - ユーザーメッセージ末尾に「このターンは物語の転機です。通常より詳細に、丁寧に描写すること。文字数制限は解除する。」を追加
+  - `turning_point_injected=True` にセット（以降は再発火しない）
+- 両機能の呼び出しを手動プレイループ・`run_single_session()`の両箇所に追加（strongは除外）
+- strongへの影響ゼロ（`if not _is_strong():` ブロックで完全分離）

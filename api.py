@@ -258,6 +258,102 @@ def extract_protagonist_name(opening_scene: str) -> str:
         return ""
 
 
+def check_turning_point(recent_history: list[dict], action: str) -> bool:
+    """improvモード用: 直近の履歴とプレイヤー行動が物語の大きな転換点かを判定する。
+    LLMにyes/noで答えさせる。エラー時はFalseを返す（安全側に倒す）。
+    """
+    # 直近5ターン分のassistantメッセージ（GM描写）を取得
+    gm_msgs = [m["content"][:150] for m in recent_history if m["role"] == "assistant"][-5:]
+    history_text = "\n".join(f"- {t}" for t in gm_msgs) if gm_msgs else "（なし）"
+    prompt = (
+        f"以下はテキストRPGの直近のGM描写です。\n\n"
+        f"{history_text}\n\n"
+        f"プレイヤーの行動: {action}\n\n"
+        f"このプレイヤーの行動が、物語の大きな転換点・転機・重要な選択になっていますか？\n"
+        f"単なる探索・移動・日常的な行動は「no」です。\n"
+        f"「yes」か「no」の1単語のみで答えてください。"
+    )
+    messages = [
+        {"role": "system", "content": "あなたはテキストRPGの進行を補助するシステムです。"},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="local",
+            messages=messages,
+            max_tokens=4,
+            temperature=0.0,
+        )
+        answer = response.choices[0].message.content.strip().lower()
+        return answer.startswith("yes")
+    except Exception:
+        return False
+
+
+GM_CHAR_PROMPTS = {
+    "tsukkomi": (
+        "あなたはテキストRPGのGMで、ツッコミ気質のキャラクターです。\n"
+        "プレイヤーの行動に対して、面白がって乗りながら一言コメントしてください。\n"
+        "例：「そうきたか。」「的確なボケだ。」「なるほど、その手があったか。」\n"
+        "15字以内の一言のみ。説明・句読点・改行は最小限。"
+    ),
+    "cynical": (
+        "あなたはテキストRPGのGMで、シニカルな性格のキャラクターです。\n"
+        "プレイヤーの行動に対して、斜に構えた一言コメントをしてください。\n"
+        "例：「…まあ、そういう手もあるか。」「そうですか。」「なるほど、その程度で。」\n"
+        "15字以内の一言のみ。説明・句読点・改行は最小限。"
+    ),
+    "worrier": (
+        "あなたはテキストRPGのGMで、常にハラハラしている心配性のキャラクターです。\n"
+        "プレイヤーの行動に対して、不安げな一言コメントをしてください。\n"
+        "例：「え、そこで寝るの…？」「ほんとうにだいじょうぶかな。」「そ、それは…。」\n"
+        "15字以内の一言のみ。説明・句読点・改行は最小限。"
+    ),
+}
+
+GM_CHAR_LABELS = {
+    "tsukkomi": "ツッコミ",
+    "cynical": "シニカル",
+    "worrier": "心配性",
+}
+
+
+def generate_gm_char_comment(action: str, recent_history: list[dict], character: str) -> str:
+    """GMキャラクターの一言コメントを生成する。
+    character: "tsukkomi" / "cynical" / "worrier"
+    エラー時は空文字を返す。
+    """
+    sys_prompt = GM_CHAR_PROMPTS.get(character)
+    if not sys_prompt:
+        return ""
+    # 直近3ターンのGM描写を参考として渡す
+    gm_msgs = [m["content"][:100] for m in recent_history if m["role"] == "assistant"][-3:]
+    context = "\n".join(f"- {t}" for t in gm_msgs) if gm_msgs else ""
+    user_content = f"直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"プレイヤーの行動: {action}"
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": user_content},
+    ]
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="local",
+            messages=messages,
+            max_tokens=32,
+            temperature=0.9,
+        )
+        comment = response.choices[0].message.content.strip()
+        # 複数行になった場合は1行目のみ
+        comment = comment.split("\n")[0].strip()
+        # 長すぎる場合は切り捨て
+        if len(comment) > 30:
+            comment = comment[:30]
+        return comment
+    except Exception:
+        return ""
+
+
 def chat_json(messages: list) -> str:
     """JSON出力専用。プロット生成など内部処理用。"""
     stop_event = threading.Event()

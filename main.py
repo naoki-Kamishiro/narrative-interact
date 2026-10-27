@@ -10,9 +10,9 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot, extract_protagonist_name
+from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot, extract_protagonist_name, check_turning_point, generate_gm_char_comment, GM_CHAR_LABELS
 import random
-from display import gm_print, system_print, error_print, hr
+from display import gm_print, system_print, error_print, hr, gm_char_print, gm_turning_point_print
 from prompt import build_start_message, build_adaptive_replot_system_prompt
 import dice as dice_mod
 import beat as beat_mod
@@ -460,7 +460,22 @@ def _build_api_messages(h: list) -> list:
                 print(f"[TURN_LIMIT] turn={turn_count}: injecting convergence prompt", file=sys.stderr)
             return msgs
 
-    return hist.build_for_api(h)
+    msgs = list(hist.build_for_api(h))
+
+    # 転換点描写強化injection（turning_point_triggeredが立っている最初のターンのみ）
+    s = state.get()
+    if s.get("turning_point_triggered", False) and not s.get("turning_point_injected", False):
+        injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。文字数制限は解除する。"
+        for i in reversed(range(len(msgs))):
+            if msgs[i]["role"] == "user":
+                msgs[i] = dict(msgs[i])
+                msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
+                break
+        state.update({"turning_point_injected": True})
+        if DEBUG_MODE:
+            print("[TURNING] turning point injection applied", file=sys.stderr)
+
+    return msgs
 
 
 def _after_reply(reply: str) -> None:
@@ -574,6 +589,81 @@ def ask_difficulty() -> str:
             return preset
         system_print("1〜3のいずれかを入力してください。")
 
+GM_CHARACTER_LABELS = {
+    "1": ("none",     "なし"),
+    "2": ("tsukkomi", "ツッコミ"),
+    "3": ("cynical",  "シニカル"),
+    "4": ("worrier",  "心配性"),
+}
+
+def ask_gm_character() -> str:
+    print()
+    print("GMキャラクター（転換点で一言コメントを表示）:")
+    print("  1. なし")
+    print("  2. ツッコミ（行動を面白がって乗る）")
+    print("  3. シニカル（斜に構えた一言）")
+    print("  4. 心配性（常にハラハラ）")
+    while True:
+        choice = ask("選択 [1/2/3/4]: ")
+        if choice in GM_CHARACTER_LABELS:
+            key, label = GM_CHARACTER_LABELS[choice]
+            system_print(f"GMキャラクター: {label}")
+            return key
+        system_print("1〜4のいずれかを入力してください。")
+
+
+def _is_off() -> bool:
+    return state.get_plot_mode() == "off"
+
+
+def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
+    """GMキャラクターのコメントと転換点による描写強化を処理する。
+    - GMキャラクターが設定されており転換点と判定された場合：コメントを表示
+    - 転換点かつturning_point_triggeredがFalseの場合：描写強化injectionをstateに記録
+    この関数はcall_gm()の前に呼ぶ。
+    """
+    s = state.get()
+    gm_character = s.get("gm_character", "none")
+    turning_triggered = s.get("turning_point_triggered", False)
+
+    # beatモード（strong/adaptive再生成後/off）での転換点検出: コード側で判定
+    is_beat_mode = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False)) or _is_off()
+    is_improv = state.get_plot_mode() == "improv"
+
+    is_turning_point = False
+
+    if is_beat_mode:
+        # beatが1つ完了（ptr が進んだ直後）= 中盤以降の転換点
+        queue = s.get("beat_queue", [])
+        ptr = s.get("beat_ptr", 0)
+        # beat_queueが存在し、かつ前のビートが完了済みであれば転換点候補
+        if queue and ptr > 0 and ptr < len(queue):
+            prev_beat = queue[ptr - 1] if ptr > 0 else None
+            if prev_beat and prev_beat.get("done", False):
+                is_turning_point = True
+    elif is_improv:
+        # improvは毎ターンLLMで判定（1-per-sessionのため未発火時のみ）
+        if not turning_triggered:
+            is_turning_point = check_turning_point(h, action)
+            if DEBUG_MODE and is_turning_point:
+                print("[TURNING] turning point detected (improv)", file=sys.stderr)
+
+    # GMキャラクターコメント（turning_pointの場合のみ、AUTO_PLAY_MODE時は表示しない）
+    if is_turning_point and gm_character != "none" and not AUTO_PLAY_MODE:
+        comment = generate_gm_char_comment(action, h, gm_character)
+        if comment:
+            gm_char_print(comment)
+            if DEBUG_MODE:
+                label = GM_CHAR_LABELS.get(gm_character, gm_character)
+                print(f"[GM_CHAR] {label}: {comment}", file=sys.stderr)
+
+    # 転換点描写強化フラグをstateに記録（1-per-session）
+    if is_turning_point and not turning_triggered:
+        state.update({"turning_point_triggered": True})
+        if DEBUG_MODE:
+            print("[TURNING] turning_point_triggered = True", file=sys.stderr)
+
+
 def start_new_game() -> tuple[list, str, str]:
     while not (genre := ask("ジャンル: ").strip()):
         system_print("ジャンルを入力してください。")
@@ -587,6 +677,10 @@ def start_new_game() -> tuple[list, str, str]:
     else:
         difficulty_preset = "normal"
 
+    gm_character = "none"
+    if not AUTO_PLAY_MODE:
+        gm_character = ask_gm_character()
+
     if plot_mode == "improv":
         system_print("プロット生成なし")
         plot = {}
@@ -595,7 +689,8 @@ def start_new_game() -> tuple[list, str, str]:
 
     state.init(genre, title, plot, plot_mode)
     state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset,
-                  "auto_play_mode": AUTO_PLAY_MODE or "manual"})
+                  "auto_play_mode": AUTO_PLAY_MODE or "manual",
+                  "gm_character": gm_character})
 
     if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
@@ -849,6 +944,10 @@ def run_single_session(plot_mode: str) -> None:
             dice_mod.display_result(dice_result)
         user_msg = _build_user_msg(action, dice_result)
         h = hist.add_user(h, user_msg)
+
+        # GMキャラクターコメント + 転換点フラグ設定（strongモードは非対象）
+        if not _is_strong():
+            _handle_gm_char_and_turning_point(action, h)
 
         reply = call_gm(_build_api_messages(h))
         if reply == "[CONTEXT_LIMIT]":
@@ -1135,6 +1234,10 @@ def main():
             dice_mod.display_result(dice_result)
         user_msg = _build_user_msg(action, dice_result)
         h = push_user(h, user_msg, pending_failed)
+
+        # GMキャラクターコメント + 転換点フラグ設定（strongモードは非対象）
+        if not _is_strong():
+            _handle_gm_char_and_turning_point(action, h)
 
         reply = call_gm(_build_api_messages(h))
 
