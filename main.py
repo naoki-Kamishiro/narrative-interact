@@ -947,9 +947,8 @@ def run_single_session(plot_mode: str) -> None:
         user_msg = _build_user_msg(action, dice_result)
         h = hist.add_user(h, user_msg)
 
-        # GMキャラクターコメント + 転換点フラグ設定（strongモードは非対象）
-        if not _is_strong():
-            _handle_gm_char_and_turning_point(action, h)
+        # GMキャラクターコメント + 転換点フラグ設定
+        _handle_gm_char_and_turning_point(action, h)
 
         reply = call_gm(_build_api_messages(h))
         if reply == "[CONTEXT_LIMIT]":
@@ -1238,9 +1237,8 @@ def main():
         user_msg = _build_user_msg(action, dice_result)
         h = push_user(h, user_msg, pending_failed)
 
-        # GMキャラクターコメント + 転換点フラグ設定（strongモードは非対象）
-        if not _is_strong():
-            _handle_gm_char_and_turning_point(action, h)
+        # GMキャラクターコメント + 転換点フラグ設定
+        _handle_gm_char_and_turning_point(action, h)
 
         reply = call_gm(_build_api_messages(h))
 
