@@ -614,6 +614,20 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 - フラグがTrueのターン（=転換点injection発火済み）は `gm_turning_point_print()`（マゼンタ）で表示
 - それ以外は従来通り `gm_print()`（白）で表示
 
+### 2026年10月（今セッション）：転換点検出バグ修正（off/adaptive/improv）
+
+バッチ5本でGMキャラコメントも転換点マゼンタも一度も出なかった問題の原因調査・修正。
+
+**バグ1：offモードでbeat_ptrが進まない**
+`_after_reply()` が `strong` と `adaptive再生成後` のみビートを進めており、`off` が含まれていなかった。
+転換点判定では `off` を beat モードとして `ptr > 0` で判定しているが、ptr が常に 0 のため一度も転換点が発火しなかった。
+- `_after_reply()` の `is_beat_mode` に `or _is_off()` を追加
+
+**バグ2：adaptive（再生成前）が転換点検出をスキップ**
+`_handle_gm_char_and_turning_point()` の分岐が `is_beat_mode` と `is_improv` の2択で、
+`adaptive`（再生成前）はどちらにも該当しないためスキップされていた。
+- `is_improv` を `is_llm_judge` に変更し、`improv OR (adaptive かつ 再生成前)` の条件でLLM判定を行うよう修正
+
 ---
 
 ### 次バージョンリリース方針（v1.1.0予定）

@@ -484,8 +484,8 @@ def _build_api_messages(h: list) -> list:
 
 
 def _after_reply(reply: str) -> None:
-    """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
-    is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
+    """strongモード / adaptive再生成後 / offモード: GM応答後にビートポインタを進める。"""
+    is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False)) or _is_off()
     if is_beat_mode:
         s = state.get()
         queue = s.get("beat_queue", [])
@@ -633,7 +633,8 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
 
     # beatモード（strong/adaptive再生成後/off）での転換点検出: コード側で判定
     is_beat_mode = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False)) or _is_off()
-    is_improv = state.get_plot_mode() == "improv"
+    # improv または adaptive再生成前はLLMで判定
+    is_llm_judge = state.get_plot_mode() == "improv" or (_is_adaptive() and not s.get("adaptive_replotted", False))
 
     is_turning_point = False
 
@@ -646,11 +647,11 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             prev_beat = queue[ptr - 1] if ptr > 0 else None
             if prev_beat and prev_beat.get("done", False):
                 is_turning_point = True
-    elif is_improv:
-        # improvは毎ターンLLMで判定
+    elif is_llm_judge:
+        # improv / adaptive再生成前: 毎ターンLLMで判定
         is_turning_point = check_turning_point(h, action)
         if DEBUG_MODE and is_turning_point:
-            print("[TURNING] turning point detected (improv)", file=sys.stderr)
+            print("[TURNING] turning point detected (llm judge)", file=sys.stderr)
 
     # GMキャラクターコメント（turning_pointの場合のみ）
     if is_turning_point and gm_character != "none":
