@@ -594,6 +594,22 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 3. GM応答後 `_after_reply()` → `turning_point_injected=False` にリセット
 4. 次の転換点で1から繰り返し
 
+### 2026年10月（今セッション）：バッチ処理でGMキャラクター選択対応・improvモード修正漏れ解消
+
+**バッチ処理でGMキャラクター選択に対応**
+バッチ実行時にGMキャラクターが常に"none"固定だった問題。バッチはデバッグ用途のためコメント出力も有効にした。
+- `BATCH_GM_CHARACTER` グローバルを追加
+- バッチ開始前に `ask_gm_character()` を1回呼び出し（`ask_use_dice()`/`ask_difficulty()` と同様）
+- `run_single_session()` の `state.update()` に `"gm_character": BATCH_GM_CHARACTER` を追加
+- `not AUTO_PLAY_MODE` ガードを削除（バッチでもGMキャラコメントを表示）
+
+**improvモードの転換点検出が1回しか発動しない修正漏れを解消**
+前セッションでbeatモードの `not turning_triggered` 条件を削除したが、improvモード側に同条件が残っていた。
+- `_handle_gm_char_and_turning_point()` のimprovブロックから `if not turning_triggered:` を削除
+- 全モードで転換点ごとに毎回GMキャラコメント・描写強化が発動するようになった
+
+---
+
 ### 次バージョンリリース方針（v1.1.0予定）
 
 GMキャラクター機能・転換点による描写強化の動作試験完了後にv1.1.0としてリリースする。
