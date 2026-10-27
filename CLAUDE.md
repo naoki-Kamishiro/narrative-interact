@@ -656,3 +656,20 @@ GMキャラクター機能・転換点による描写強化の動作試験完了
 `v1.0.0` タグはそのまま残す（古いバージョンへのアクセス維持）。
 
 **動作試験が完了するまでリリースしない。**
+
+### 2026年10月（今セッション・続き）：GMキャラコメントをJSONログに記録
+
+Gemini評価時にGMキャラコメントが「ログ非保持のためスキップ」と判定され、評価・デバッグ不能だった。
+
+**変更内容**
+- `state.py`：`gm_char_log: []` を初期値に追加
+- `main.py` `_handle_gm_char_and_turning_point()`：コメント生成後に `state.gm_char_log` へ `{"turn": N, "character": "...", "comment": "..."}` をappend
+- `save_session_json()` は `state.get()` をそのままJSONに書くため、追加実装なしで自動記録される
+
+**ログフォーマット**
+```json
+"gm_char_log": [
+  {"turn": 3, "character": "tsukkomi", "comment": "え、そこ調べます？"},
+  {"turn": 7, "character": "tsukkomi", "comment": "また同じことしてる…"}
+]
+```
