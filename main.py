@@ -701,7 +701,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
 
     # GMキャラクターコメント（turning_pointの場合のみ）
     if is_turning_point and gm_character != "none":
-        comment = generate_gm_char_comment(action, h, gm_character)
+        comment = generate_gm_char_comment(action, h, gm_character, gm_char_log=s.get("gm_char_log", []))
         if comment:
             gm_char_print(comment)
             if DEBUG_MODE:

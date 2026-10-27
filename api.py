@@ -328,9 +328,10 @@ GM_CHAR_LABELS = {
 }
 
 
-def generate_gm_char_comment(action: str, recent_history: list[dict], character: str) -> str:
+def generate_gm_char_comment(action: str, recent_history: list[dict], character: str, gm_char_log: list[dict] | None = None) -> str:
     """GMキャラクターの一言コメントを生成する。
     character: "tsukkomi" / "cynical" / "worrier"
+    gm_char_log: これまでの全コメント履歴（繰り返し抑止用）
     エラー時は空文字を返す。
     """
     sys_prompt = GM_CHAR_PROMPTS.get(character)
@@ -339,7 +340,13 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
     # 直近3ターンのGM描写を参考として渡す
     gm_msgs = [m["content"][:100] for m in recent_history if m["role"] == "assistant"][-3:]
     context = "\n".join(f"- {t}" for t in gm_msgs) if gm_msgs else ""
-    user_content = f"直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"プレイヤーの行動: {action}"
+    # これまでの全コメント（繰り返し抑止）
+    past_comments = ""
+    if gm_char_log:
+        comments = [entry["comment"] for entry in gm_char_log if "comment" in entry]
+        if comments:
+            past_comments = "【これまでに使ったコメント（同じ表現・フレーズは使わないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
+    user_content = f"{past_comments}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}プレイヤーの行動: {action}"
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_content},
