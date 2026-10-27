@@ -593,3 +593,17 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 2. `_build_api_messages()` → injection発火、`turning_point_triggered=False` / `turning_point_injected=True`
 3. GM応答後 `_after_reply()` → `turning_point_injected=False` にリセット
 4. 次の転換点で1から繰り返し
+
+### 次バージョンリリース方針（v1.1.0予定）
+
+GMキャラクター機能・転換点による描写強化の動作試験完了後にv1.1.0としてリリースする。
+
+**リリース手順**
+1. README.md / README_EN.md のタイトルを `v1.1.0` に変更
+2. `git tag v1.1.0` でタグを打つ
+3. `git push origin v1.1.0` でGitHubにタグを上げる
+4. GitHubのReleasesページで `v1.1.0` のリリースを作成
+
+`v1.0.0` タグはそのまま残す（古いバージョンへのアクセス維持）。
+
+**動作試験が完了するまでリリースしない。**
