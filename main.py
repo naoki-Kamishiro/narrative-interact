@@ -693,7 +693,7 @@ def start_new_game() -> tuple[list, str, str]:
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": gm_character})
 
-    if plot_mode == "strong" and plot:
+    if plot_mode in ("strong", "off") and plot:
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:
@@ -759,7 +759,7 @@ def resume_game() -> tuple[list, str, str] | None:
     dice_mod.set_difficulty_preset(s.get("difficulty_preset", "normal"))
 
     # 旧セーブにbeat_queueがない場合は再構築
-    if plot_mode == "strong" and plot and not s.get("beat_queue"):
+    if plot_mode in ("strong", "off") and plot and not s.get("beat_queue"):
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:
@@ -872,7 +872,7 @@ def run_single_session(plot_mode: str) -> None:
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": BATCH_GM_CHARACTER})
 
-    if plot_mode == "strong" and plot:
+    if plot_mode in ("strong", "off") and plot:
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:
