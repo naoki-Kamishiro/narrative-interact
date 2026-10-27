@@ -12,7 +12,7 @@ import plot as plot_mod
 import save as save_mod
 from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot, extract_protagonist_name, check_turning_point, generate_gm_char_comment, GM_CHAR_LABELS
 import random
-from display import gm_print, system_print, error_print, hr, gm_char_print, gm_turning_point_print
+from display import gm_print, system_print, error_print, hr, gm_char_print
 from prompt import build_start_message, build_adaptive_replot_system_prompt
 import dice as dice_mod
 import beat as beat_mod
@@ -130,11 +130,7 @@ def call_gm(messages: list, max_retries: int = 1) -> str:
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
-        # 転換点ターンはマゼンタで表示
-        if state.get().get("turning_point_injected", False):
-            gm_turning_point_print(reply)
-        else:
-            gm_print(reply)
+        gm_print(reply)
     return reply
 
 
