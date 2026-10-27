@@ -130,7 +130,11 @@ def call_gm(messages: list, max_retries: int = 1) -> str:
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
-        gm_print(reply)
+        # 転換点ターンはマゼンタで表示
+        if state.get().get("turning_point_injected", False):
+            gm_turning_point_print(reply)
+        else:
+            gm_print(reply)
     return reply
 
 

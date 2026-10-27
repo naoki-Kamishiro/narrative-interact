@@ -608,6 +608,12 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
 - `_handle_gm_char_and_turning_point()` のimprovブロックから `if not turning_triggered:` を削除
 - 全モードで転換点ごとに毎回GMキャラコメント・描写強化が発動するようになった
 
+**転換点ターンのGM本文をマゼンタで表示する処理を追加**
+`gm_turning_point_print()` はdisplay.pyに実装・importされていたが、呼び出し箇所がなかった（実装漏れ）。
+- `call_gm()` 内の表示処理を `turning_point_injected` フラグで分岐
+- フラグがTrueのターン（=転換点injection発火済み）は `gm_turning_point_print()`（マゼンタ）で表示
+- それ以外は従来通り `gm_print()`（白）で表示
+
 ---
 
 ### 次バージョンリリース方針（v1.1.0予定）
