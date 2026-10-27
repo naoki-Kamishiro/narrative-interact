@@ -569,3 +569,20 @@ improvモードでは`protagonist.get("name")`が常に空のため「あなた�
   - `turning_point_injected=True` にセット（以降は再発火しない）
 - 両機能の呼び出しを手動プレイループ・`run_single_session()`の両箇所に追加（strongは除外）
 - strongへの影響ゼロ（`if not _is_strong():` ブロックで完全分離）
+
+### 2026年10月（今セッション・続き）：GMキャラクター複数回発動バグ修正
+
+初期実装でGMキャラコメントが1セッション中1回しか出ない問題。
+
+**原因**：`_handle_gm_char_and_turning_point()` に `not turning_triggered` 条件があり、1回発動後に二度とTrueにならなかった。
+
+**修正内容**
+- `_handle_gm_char_and_turning_point()` の条件から `not turning_triggered` を削除（転換点ごとに毎回発動）
+- `_build_api_messages()` で injection発火後に `turning_point_triggered=False` にリセット（injection済み後は再注入しない）
+- `_after_reply()` で GM応答後に `turning_point_injected=False` にリセット（次の転換点で再び発火できるよう）
+
+**動作フロー（修正後）**
+1. 転換点検出 → `turning_point_triggered=True`、GMコメント表示
+2. `_build_api_messages()` → injection発火、`turning_point_triggered=False` / `turning_point_injected=True`
+3. GM応答後 `_after_reply()` → `turning_point_injected=False` にリセット
+4. 次の転換点で1から繰り返し
