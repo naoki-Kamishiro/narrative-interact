@@ -466,7 +466,7 @@ def _build_api_messages(h: list) -> list:
     # 転換点描写強化injection（turning_point_triggeredが立っているターン）
     s = state.get()
     if s.get("turning_point_triggered", False) and not s.get("turning_point_injected", False):
-        injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。文字数制限は解除する。"
+        injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。500字以内とすること。"
         for i in reversed(range(len(msgs))):
             if msgs[i]["role"] == "user":
                 msgs[i] = dict(msgs[i])
