@@ -263,7 +263,7 @@ def check_turning_point(recent_history: list[dict], action: str) -> bool:
     LLMにyes/noで答えさせる。エラー時はFalseを返す（安全側に倒す）。
     """
     # 直近5ターン分のassistantメッセージ（GM描写）を取得
-    gm_msgs = [m["content"][:150] for m in recent_history if m["role"] == "assistant"][-5:]
+    gm_msgs = [m["content"][:300] for m in recent_history if m["role"] == "assistant"][-5:]
     history_text = "\n".join(f"- {t}" for t in gm_msgs) if gm_msgs else "（なし）"
     prompt = (
         f"以下はテキストRPGの直近のGM描写です。\n\n"
