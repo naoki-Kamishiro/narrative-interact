@@ -13,7 +13,7 @@ BLUE    = "\033[94m"
 RED     = "\033[91m"
 DIM     = "\033[2m"
 CYAN        = "\033[96m"
-BOLD_YELLOW = "\033[1;33m"
+BOLD_YELLOW = "\033[93m"
 MAGENTA = "\033[95m"
 HR      = DIM + "─" * 60 + RESET
 
