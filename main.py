@@ -493,8 +493,12 @@ def _after_reply(reply: str) -> None:
         s = state.get()
         queue = s.get("beat_queue", [])
         ptr = s.get("beat_ptr", 0)
+        old_ptr = ptr
         queue, ptr = beat_mod.advance(queue, ptr, reply)
-        state.update({"beat_queue": queue, "beat_ptr": ptr})
+        advanced = ptr > old_ptr
+        state.update({"beat_queue": queue, "beat_ptr": ptr, "beat_just_advanced": advanced})
+    else:
+        state.update({"beat_just_advanced": False})
     # 転換点injectionフラグをリセット（次の転換点で再発火できるよう）
     state.update({"turning_point_injected": False})
 
@@ -636,14 +640,8 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
     is_turning_point = False
 
     if is_beat_mode:
-        # beatが1つ完了（ptr が進んだ直後）= 中盤以降の転換点
-        queue = s.get("beat_queue", [])
-        ptr = s.get("beat_ptr", 0)
-        # beat_queueが存在し、かつ前のビートが完了済みであれば転換点候補
-        if queue and ptr > 0 and ptr < len(queue):
-            prev_beat = queue[ptr - 1] if ptr > 0 else None
-            if prev_beat and prev_beat.get("done", False):
-                is_turning_point = True
+        # beat_just_advanced=True のターンのみ転換点（1回だけ発動）
+        is_turning_point = s.get("beat_just_advanced", False)
     elif is_llm_judge:
         # improv / adaptive再生成前: 毎ターンLLMで判定
         is_turning_point = check_turning_point(h, action)
