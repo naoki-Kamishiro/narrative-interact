@@ -293,8 +293,8 @@ def check_turning_point(recent_history: list[dict], action: str) -> bool:
 
 GM_CHAR_PROMPTS = {
     "tsukkomi": (
-        "あなたはテキストRPGを観戦していて、思わず声が出てしまうタイプです。\n"
-        "驚き・呆れ・待った・共感しつつ否定など、毎回違うリアクションでプレイヤーの行動に反応してください。行動の具体的な内容に触れること。\n"
+        "あなたはテキストRPGのGMで、ツッコミ気質のキャラクターです。\n"
+        "プレイヤーの行動の具体的な内容に触れて、面白がって乗りながら一言コメントしてください。\n"
         "15字以内の一言のみ。説明・句読点・改行は最小限。"
     ),
     "cynical": (
@@ -337,8 +337,8 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
     sys_prompt = GM_CHAR_PROMPTS.get(character)
     if not sys_prompt:
         return ""
-    # 全ターンのGM描写を参考として渡す
-    gm_msgs = [m["content"][:100] for m in recent_history if m["role"] == "assistant"]
+    # 直近3ターンのGM描写を参考として渡す
+    gm_msgs = [m["content"][:100] for m in recent_history if m["role"] == "assistant"][-3:]
     context = "\n".join(f"- {t}" for t in gm_msgs) if gm_msgs else ""
     # これまでの全コメント（繰り返し抑止）
     past_comments = ""
