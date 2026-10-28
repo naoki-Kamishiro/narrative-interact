@@ -273,6 +273,23 @@ def _get_recent_player_actions(history: list, n: int = 5) -> list[str]:
     return actions[-n:] if actions else []
 
 
+def _apply_turning_point_injection(msgs: list) -> list:
+    """転換点フラグが立っている場合、描写強化injectionをメッセージ末尾のuserに追加してフラグを更新する。"""
+    s = state.get()
+    if s.get("turning_point_triggered", False) and not s.get("turning_point_injected", False):
+        injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。500字以内とすること。"
+        msgs = list(msgs)
+        for i in reversed(range(len(msgs))):
+            if msgs[i]["role"] == "user":
+                msgs[i] = dict(msgs[i])
+                msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
+                break
+        state.update({"turning_point_injected": True, "turning_point_triggered": False})
+        if DEBUG_MODE:
+            print("[TURNING] turning point injection applied", file=sys.stderr)
+    return msgs
+
+
 def _build_api_messages(h: list) -> list:
     """strongモードならビート注入版、それ以外は通常版でAPI用メッセージを返す。"""
     if _is_strong():
@@ -343,7 +360,7 @@ def _build_api_messages(h: list) -> list:
                     break
             if DEBUG_MODE:
                 print(f"[BEAT] post-ending injection (turn {post_count})", file=sys.stderr)
-        return msgs
+        return _apply_turning_point_injection(msgs)
     # adaptiveモード: 逸脱検出 → 警告injection → プロット再生成 → beat着地
     if _is_adaptive():
         s = state.get()
@@ -404,7 +421,7 @@ def _build_api_messages(h: list) -> list:
                         break
                 if DEBUG_MODE:
                     print(f"[ADAPTIVE] post-ending injection (turn {post_count})", file=sys.stderr)
-            return msgs
+            return _apply_turning_point_injection(msgs)
 
         # 再生成前: 毎ターン逸脱判定（AUTO_PLAY_MODEに関わらず判定する）
         recent = _get_recent_player_actions(h, n=3)
@@ -428,7 +445,7 @@ def _build_api_messages(h: list) -> list:
                     msgs, debug = hist.build_for_api_with_beat(h, queue, ptr)
                     if debug and DEBUG_MODE:
                         print(debug, file=sys.stderr)
-                    return msgs
+                    return _apply_turning_point_injection(msgs)
                 elif deviation_count >= 3:
                     # 警告injection: GMに収束を促す
                     msgs = list(hist.build_for_api(h))
@@ -444,7 +461,7 @@ def _build_api_messages(h: list) -> list:
                             break
                     if DEBUG_MODE:
                         print(f"[ADAPTIVE] warning injection at count={deviation_count}", file=sys.stderr)
-                    return msgs
+                    return _apply_turning_point_injection(msgs)
             else:
                 # 逸脱なし: カウントはリセットせず累積する
                 if DEBUG_MODE and s.get("deviation_count", 0) > 0:
@@ -463,24 +480,10 @@ def _build_api_messages(h: list) -> list:
                     break
             if DEBUG_MODE:
                 print(f"[TURN_LIMIT] turn={turn_count}: injecting convergence prompt", file=sys.stderr)
-            return msgs
+            return _apply_turning_point_injection(msgs)
 
     msgs = list(hist.build_for_api(h))
-
-    # 転換点描写強化injection（turning_point_triggeredが立っているターン）
-    s = state.get()
-    if s.get("turning_point_triggered", False) and not s.get("turning_point_injected", False):
-        injection = "このターンは物語の転機です。通常より詳細に、丁寧に描写すること。500字以内とすること。"
-        for i in reversed(range(len(msgs))):
-            if msgs[i]["role"] == "user":
-                msgs[i] = dict(msgs[i])
-                msgs[i]["content"] += f"\n（GMへの場面指示: {injection}）"
-                break
-        state.update({"turning_point_injected": True, "turning_point_triggered": False})
-        if DEBUG_MODE:
-            print("[TURNING] turning point injection applied", file=sys.stderr)
-
-    return msgs
+    return _apply_turning_point_injection(msgs)
 
 
 def _after_reply(reply: str) -> None:
