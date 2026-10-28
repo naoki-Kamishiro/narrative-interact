@@ -725,3 +725,10 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
 - `main.py`：`GM_CHARACTER_OPTIONS` リストと `_select_with_cursor()` 関数を削除。`ask_gm_character()` を1/2の番号入力（あり=cynical/なし=none）に変更
 - `requirements.txt`：`readchar` を削除
 - `README.md` / `README_EN.md`：GMキャラクター説明をシニカルあり/なしに縮小・更新
+
+### 2026年10月（commit 76b960d）：転換点ターンのGM描写を黄色太字で表示（実装漏れ修正）
+
+`gm_turning_point_print()`はdisplay.pyに実装・黄色太字で定義済みだったが、`main.py`でインポートも呼び出しもされていなかった（実装漏れ）。
+
+- `main.py`：`gm_turning_point_print` をインポートに追加
+- `main.py` `call_gm()`：`turning_point_injected` フラグがTrueのターンは `gm_turning_point_print()`（黄色太字）で表示、それ以外は従来通り `gm_print()`（白）で表示
