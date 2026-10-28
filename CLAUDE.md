@@ -739,3 +739,14 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
 - `README_EN.md`：タイトルを `v1.1.0 (beta)` → `v1.1.0` に変更、beta警告ブロックを削除
 - v1.1.0タグをGitHubにリリース済み（リリースノートはWebページから手動編集）
 - 転換点ターンのGM描写を黄色太字で表示する実装漏れを修正（commit 76b960d）
+
+### 2026年10月（commit 29f55a2）：転換点injection処理リファクタリング・全モードで発火するよう修正
+
+**バグ**：GMキャラコメント（一言）は表示されるのにGM本文が黄色太字にならない。
+
+**原因**：`_build_api_messages()`にstrong/off/adaptive等のモード別ブロックがあり、それぞれで`return msgs`を途中実行していた。転換点injection処理は関数末尾（25ターン以下・通常パス）にしか存在せず、strong・off・adaptive(再生成後)・25ターン超では一度も転換点injectionに到達しなかった。
+
+**修正**：
+- `_apply_turning_point_injection(msgs)`ヘルパー関数を新設（従来の末尾処理を抽出）
+- `_build_api_messages()`内の全`return msgs`（5箇所）を`return _apply_turning_point_injection(msgs)`に変更
+- これにより全モード・全ターン条件で転換点injection（黄色太字フラグ）が確実に発火する
