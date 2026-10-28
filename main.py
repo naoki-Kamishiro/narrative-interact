@@ -838,12 +838,14 @@ def save_session_json(h: list, title: str) -> None:
     # Windows/Linux共通で問題になる文字を全て除去
     import re as _re
     import subprocess as _sp
+    import os as _os
     safe_title = _re.sub(r'[\\/:*?"<>|\s]', "_", title)
     safe_title = safe_title.strip("_") or "session"
     play_mode = state.get().get("auto_play_mode", "manual")
     try:
         commit_hash = _sp.check_output(
             ["git", "rev-parse", "--short", "HEAD"],
+            cwd=_os.path.dirname(_os.path.abspath(__file__)),
             stderr=_sp.DEVNULL, text=True
         ).strip()
     except Exception:
