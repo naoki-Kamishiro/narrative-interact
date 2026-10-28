@@ -345,7 +345,7 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
     if gm_char_log:
         comments = [entry["comment"] for entry in gm_char_log if "comment" in entry]
         if comments:
-            past_comments = "【これまでに使ったコメント（同じ表現・フレーズは使わないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
+            past_comments = "【これまでに使ったコメント（語尾・語法のパターンを読み取り、同じパターンを繰り返さないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
     user_content = f"{past_comments}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}プレイヤーの行動: {action}"
     messages = [
         {"role": "system", "content": sys_prompt},
