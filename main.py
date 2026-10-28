@@ -848,7 +848,8 @@ def save_session_json(h: list, title: str) -> None:
         ).strip()
     except Exception:
         commit_hash = "unknown"
-    filename = f"{safe_title}_{play_mode}_{commit_hash}.json"
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
     data = {
         "state": state.get(),
         "history": h,
