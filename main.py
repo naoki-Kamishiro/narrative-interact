@@ -835,13 +835,20 @@ def resume_game() -> tuple[list, str, str] | None:
 
 def save_session_json(h: list, title: str) -> None:
     """AUTO_PLAYモード用: セッション全体をJSONで保存する。"""
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Windows/Linux共通で問題になる文字を全て除去
     import re as _re
+    import subprocess as _sp
     safe_title = _re.sub(r'[\\/:*?"<>|\s]', "_", title)
     safe_title = safe_title.strip("_") or "session"
     play_mode = state.get().get("auto_play_mode", "manual")
-    filename = f"{safe_title}_{play_mode}_{timestamp}.json"
+    try:
+        commit_hash = _sp.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        commit_hash = "unknown"
+    filename = f"{safe_title}_{play_mode}_{commit_hash}.json"
     data = {
         "state": state.get(),
         "history": h,
