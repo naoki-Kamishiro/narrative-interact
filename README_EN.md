@@ -1,7 +1,4 @@
-# Narrative Interact v1.1.0 (beta)
-
-> **⚠️ This is a beta release.** GM Character and turning-point narration boost are newly added and still under testing.
-> For the stable release, see **[v1.0.0](https://github.com/naoki-Kamishiro/narrative-interact/releases/tag/v1.0.0)**.
+# Narrative Interact v1.1.0
 
 An interactive fiction system that runs on a local LLM via LM Studio.
 

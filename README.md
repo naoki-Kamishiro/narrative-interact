@@ -1,9 +1,6 @@
-# Narrative Interact v1.1.0（β版）
+# Narrative Interact v1.1.0
 
 [English README is here](README_EN.md)
-
-> **⚠️ これはβ版です。** GMキャラクター機能・転換点描写強化を追加した開発中バージョンのため、動作が不安定な場合があります。
-> 安定版をお求めの場合は **[v1.0.0リリース](https://github.com/naoki-Kamishiro/narrative-interact/releases/tag/v1.0.0)** をご利用ください。
 
 ローカルLLMで動くインタラクティブフィクションシステム。  
 ジャンルとタイトルを入力するだけで、LLMがGM（ゲームマスター）として物語を自動生成する。プレイヤーは主人公として自由に行動を入力し、その結果に応じてGMが物語を進める。

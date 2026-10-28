@@ -732,3 +732,10 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
 
 - `main.py`：`gm_turning_point_print` をインポートに追加
 - `main.py` `call_gm()`：`turning_point_injected` フラグがTrueのターンは `gm_turning_point_print()`（黄色太字）で表示、それ以外は従来通り `gm_print()`（白）で表示
+
+### 2026年10月（今セッション）：v1.1.0正式リリース・β版表記削除
+
+- `README.md`：タイトルを `v1.1.0（β版）` → `v1.1.0` に変更、β版警告ブロック（⚠️）を削除
+- `README_EN.md`：タイトルを `v1.1.0 (beta)` → `v1.1.0` に変更、beta警告ブロックを削除
+- v1.1.0タグをGitHubにリリース済み（リリースノートはWebページから手動編集）
+- 転換点ターンのGM描写を黄色太字で表示する実装漏れを修正（commit 76b960d）
