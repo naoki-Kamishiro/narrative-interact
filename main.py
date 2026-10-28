@@ -849,7 +849,12 @@ def save_session_json(h: list, title: str) -> None:
             stderr=_sp.DEVNULL, text=True
         ).strip()
     except Exception:
-        commit_hash = "unknown"
+        try:
+            _ver_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "VERSION")
+            with open(_ver_path, encoding="utf-8") as _vf:
+                commit_hash = _vf.read().strip()
+        except Exception:
+            commit_hash = "unknown"
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
     data = {
