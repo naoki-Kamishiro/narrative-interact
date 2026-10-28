@@ -716,3 +716,12 @@ Gemini評価時にGMキャラコメントが「ログ非保持のためスキッ
 - `main.py`：`GM_CHARACTER_OPTIONS` の該当エントリを `("cheerful", "お調子者（ノリよく一緒に盛り上がる）")` に変更
 - `README.md`：GMキャラクター表の「全肯定」→「お調子者」に更新
 - `README_EN.md`：「All-Positive」→「Hype Man」に更新
+
+### 2026年10月（今セッション）：GMキャラクターをシニカル固定・あり/なし選択に変更
+
+シニカル5本バッチ検証でバリエーションが十分と確認。tsukkomi/worrier等は語尾・表現のパターン固着が問題で、プロンプトでは解消困難と判断。GMキャラクターをシニカル1種に固定し、選択肢をあり/なしのみに簡略化。
+
+- `api.py`：`GM_CHAR_PROMPTS` / `GM_CHAR_LABELS` をシニカルのみに縮小（tsukkomi/worrier/cheerful/easygoing削除）
+- `main.py`：`GM_CHARACTER_OPTIONS` リストと `_select_with_cursor()` 関数を削除。`ask_gm_character()` を1/2の番号入力（あり=cynical/なし=none）に変更
+- `requirements.txt`：`readchar` を削除
+- `README.md` / `README_EN.md`：GMキャラクター説明をシニカルあり/なしに縮小・更新
