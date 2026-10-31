@@ -790,4 +790,4 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - README_EN.md を日本語版に合わせて全面改訳。現在は日本語のみで英語版を用意する可能性がある旨を記載
 
 **リポジトリ**
-- handoff_gemini.md を追跡対象から外し .gitignore に追加（CLAUDE.md は追跡継続）
+- CLAUDE.md / handoff_gemini.md を一時的に追跡対象から外したが、両方とも追跡対象に戻した（handoff_gemini.md はGeminiに評価させるための資料で、リポジトリに必要）

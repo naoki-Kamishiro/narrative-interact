@@ -9,6 +9,3 @@ build/
 .env
 saves/
 *.json
-
-# 開発用メモ（ローカルのみ）
-handoff_gemini.md
