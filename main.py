@@ -1158,6 +1158,11 @@ def main():
 
     if h is None:
         h, genre, title, initial_reply = start_new_game()
+        # 自動プレイでは /retry できないため、初回生成に失敗したら即終了する（バッチと同じ扱い）
+        if AUTO_PLAY_MODE and initial_reply == "":
+            state.update({"end_reason": "initial_error"})
+            error_print("初回応答生成に失敗しました。終了します。")
+            return
         # 初回生成が失敗した場合（空文字）はpending_failedをTrueに
         pending_failed = (initial_reply == "")
     else:
