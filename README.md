@@ -1,6 +1,4 @@
-# Narrative Interact v1.1.0
-
-> ⚠️ **これはベータ版です。** 安定版は [v1.0.0](https://github.com/naoki-Kamishiro/narrative-interact/releases/tag/v1.0.0) を使ってください。
+# Narrative Interact v1.0.0
 
 [English README is here](README_EN.md)
 
