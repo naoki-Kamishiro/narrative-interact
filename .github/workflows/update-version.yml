@@ -1,0 +1,31 @@
+# main へのpushごとに VERSION ファイルを最新のコミットハッシュ（短縮7桁）に更新する。
+# gitが使えない環境（ZIPダウンロード等）でも、ログファイル名に正しいハッシュが付くようにするため。
+# この更新コミット自体は GITHUB_TOKEN で行うため、ワークフローは再実行されない。
+name: Update VERSION
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - VERSION
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write short commit hash to VERSION
+        run: |
+          echo "${GITHUB_SHA::7}" > VERSION
+          if git diff --quiet; then
+            echo "VERSION is already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: VERSION を ${GITHUB_SHA::7} に更新"
+          git push
