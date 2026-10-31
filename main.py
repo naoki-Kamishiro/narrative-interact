@@ -494,6 +494,21 @@ def _build_api_messages(h: list) -> list:
     return _apply_turning_point_injection(msgs)
 
 
+def _is_turning_point_beat(beat: dict) -> bool:
+    """strongモード: 物語構造上の節目にあたるビートかを判定する。
+    中間点（反転）・どん底（中盤の失敗）・後戻りできない選択（クライマックス直前の選択）・山場（クライマックスの反転）。
+    序盤の思い込み・序盤の失敗・キャラクター登場・中盤の思い込み・中盤の選択は転換点にしない。"""
+    t = beat.get("type")
+    timing = beat.get("timing", "")
+    if t == "twist":
+        return True
+    if t == "failure":
+        return timing != "序盤"
+    if t == "choice":
+        return timing not in ("序盤", "中盤")
+    return False
+
+
 def _after_reply(reply: str) -> None:
     """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
     is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
@@ -504,9 +519,12 @@ def _after_reply(reply: str) -> None:
         old_ptr = ptr
         queue, ptr = beat_mod.advance(queue, ptr, reply)
         advanced = ptr > old_ptr
-        state.update({"beat_queue": queue, "beat_ptr": ptr, "beat_just_advanced": advanced})
+        # strongの転換点は節目のビートが進んだターンのみ（beat_just_advanced は/retryの巻き戻しにも使うため別フラグ）
+        tp_beat = advanced and 0 < ptr <= len(queue) and _is_turning_point_beat(queue[ptr - 1])
+        state.update({"beat_queue": queue, "beat_ptr": ptr, "beat_just_advanced": advanced,
+                      "turning_point_beat": tp_beat})
     else:
-        state.update({"beat_just_advanced": False})
+        state.update({"beat_just_advanced": False, "turning_point_beat": False})
     # 転換点injectionフラグをリセット（次の転換点で再発火できるよう）
     state.update({"turning_point_injected": False})
 
@@ -649,8 +667,12 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
     is_turning_point = False
 
     if is_beat_mode:
-        # beat_just_advanced=True のターンのみ転換点（1回だけ発動）
-        is_turning_point = s.get("beat_just_advanced", False)
+        if _is_strong():
+            # strong: 節目のビート（反転・中盤の失敗・クライマックス直前の選択）が進んだターンのみ
+            is_turning_point = s.get("turning_point_beat", False)
+        else:
+            # adaptive再生成後: beat_just_advanced=True のターンのみ転換点（1回だけ発動）
+            is_turning_point = s.get("beat_just_advanced", False)
     elif is_llm_judge:
         # off / improv / adaptive再生成前: 毎ターンLLMで判定
         is_turning_point = check_turning_point(h, action)
