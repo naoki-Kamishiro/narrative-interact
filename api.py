@@ -3,6 +3,12 @@ import threading
 import time
 from config import LM_STUDIO_URL, API_KEY, MAX_TOKENS, TEMPERATURE
 
+_api_language: str = "ja"
+
+def set_api_language(lang: str) -> None:
+    global _api_language
+    _api_language = lang
+
 PLAYER_URL = LM_STUDIO_URL  # GMと同じポートを使用（同一モデルでGM・プレイヤー兼用）
 
 _client: OpenAI | None = None
@@ -25,8 +31,9 @@ def _show_progress(stop_event: threading.Event) -> None:
     import sys
     chars = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
     i = 0
+    label = "Generating" if _api_language == "en" else "生成中"
     while not stop_event.is_set():
-        sys.stdout.write(f"\r生成中 {chars[i % len(chars)]}")
+        sys.stdout.write(f"\r{label} {chars[i % len(chars)]}")
         sys.stdout.flush()
         i += 1
         time.sleep(0.1)
@@ -82,29 +89,50 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
         return f"[ERROR: {e}]"
 
 
-def generate_genre_title(genre: str = "") -> dict:
+def generate_genre_title(genre: str = "", language: str = "ja") -> dict:
     """バッチモード用: LLMにタイトルを生成させる。
     genre: ジャンル（指定された場合はそのジャンルのタイトルのみ生成）。
+    language: "ja" / "en"
     戻り値: {"genre": "...", "title": "..."} または {"error": "..."}
     """
-    if genre:
-        prompt = (
-            f"インタラクティブフィクション（テキストRPG）のタイトルを1つ考えてください。\n"
-            f"ジャンル：{genre}\n"
-            "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
-            "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
-            f'{{"genre": "{genre}", "title": "タイトル"}}'
-        )
+    if language == "en":
+        if genre:
+            prompt = (
+                f"Create one title for an interactive fiction (text RPG).\n"
+                f"Genre: {genre}\n"
+                "The title should be short and evocative of the story's atmosphere.\n"
+                "Output only in the following JSON format. No explanation or preamble.\n"
+                f'{{"genre": "{genre}", "title": "Title Here"}}'
+            )
+        else:
+            prompt = (
+                "Create one genre and title for an interactive fiction (text RPG).\n"
+                "Genre examples: Mystery, Fantasy, Horror, Sci-Fi, Slice of Life, Historical, etc.\n"
+                "The title should be short and evocative of the story's atmosphere.\n"
+                "Output only in the following JSON format. No explanation or preamble.\n"
+                '{"genre": "Genre Name", "title": "Title Here"}'
+            )
+        sys_content = "You are an assistant that proposes creative fiction ideas."
     else:
-        prompt = (
-            "インタラクティブフィクション（テキストRPG）のジャンルとタイトルを1つ考えてください。\n"
-            "ジャンルの例：ミステリー、ファンタジー、ホラー、SF、日常、時代劇、群像劇など。\n"
-            "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
-            "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
-            '{"genre": "ジャンル名", "title": "タイトル"}'
-        )
+        if genre:
+            prompt = (
+                f"インタラクティブフィクション（テキストRPG）のタイトルを1つ考えてください。\n"
+                f"ジャンル：{genre}\n"
+                "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
+                "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
+                f'{{"genre": "{genre}", "title": "タイトル"}}'
+            )
+        else:
+            prompt = (
+                "インタラクティブフィクション（テキストRPG）のジャンルとタイトルを1つ考えてください。\n"
+                "ジャンルの例：ミステリー、ファンタジー、ホラー、SF、日常、時代劇、群像劇など。\n"
+                "タイトルは物語の雰囲気を持つ短い日本語タイトルにしてください。\n"
+                "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
+                '{"genre": "ジャンル名", "title": "タイトル"}'
+            )
+        sys_content = "あなたは創作のアイデアを提案するアシスタントです。"
     messages = [
-        {"role": "system", "content": "あなたは創作のアイデアを提案するアシスタントです。"},
+        {"role": "system", "content": sys_content},
         {"role": "user", "content": prompt},
     ]
     import json as _json
@@ -303,18 +331,32 @@ GM_CHAR_PROMPTS = {
     ),
 }
 
+GM_CHAR_PROMPTS_EN = {
+    "cynical": (
+        "You are the GM of a text RPG with a cynical personality.\n"
+        "React to the player's specific action with a sardonic one-liner.\n"
+        "15 words max. No explanation, no punctuation beyond the comment itself, no line breaks."
+    ),
+}
+
 GM_CHAR_LABELS = {
     "cynical": "シニカル",
 }
 
+GM_CHAR_LABELS_EN = {
+    "cynical": "Cynical",
+}
 
-def generate_gm_char_comment(action: str, recent_history: list[dict], character: str, gm_char_log: list[dict] | None = None) -> str:
+
+def generate_gm_char_comment(action: str, recent_history: list[dict], character: str, gm_char_log: list[dict] | None = None, language: str = "ja") -> str:
     """GMキャラクターの一言コメントを生成する。
-    character: "tsukkomi" / "cynical" / "worrier"
+    character: "cynical"
     gm_char_log: これまでの全コメント履歴（繰り返し抑止用）
+    language: "ja" / "en"
     エラー時は空文字を返す。
     """
-    sys_prompt = GM_CHAR_PROMPTS.get(character)
+    prompts = GM_CHAR_PROMPTS_EN if language == "en" else GM_CHAR_PROMPTS
+    sys_prompt = prompts.get(character)
     if not sys_prompt:
         return ""
     # 直近3ターンのGM描写を参考として渡す
@@ -325,8 +367,14 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
     if gm_char_log:
         comments = [entry["comment"] for entry in gm_char_log if "comment" in entry]
         if comments:
-            past_comments = "【これまでに使ったコメント（語尾・語法のパターンを読み取り、同じパターンを繰り返さないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
-    user_content = f"{past_comments}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}プレイヤーの行動: {action}"
+            if language == "en":
+                past_comments = "[Previous comments — read the pattern and do NOT repeat the same phrasing]\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
+            else:
+                past_comments = "【これまでに使ったコメント（語尾・語法のパターンを読み取り、同じパターンを繰り返さないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
+    if language == "en":
+        user_content = f"{past_comments}Recent situation:\n{context}\n\nPlayer action: {action}" if context else f"{past_comments}Player action: {action}"
+    else:
+        user_content = f"{past_comments}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}プレイヤーの行動: {action}"
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_content},

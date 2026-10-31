@@ -78,16 +78,50 @@ def _compute_difficulty(risk: str, uncertainty: str) -> int:
     difficulty = _BASE_DIFFICULTY + risk_v + unc_v + _difficulty_offset
     return max(6, min(18, difficulty))
 
-def judge(action: str, history: list) -> dict | None:
+JUDGE_PROMPT_EN = """\
+Receive the player's action and determine whether a dice roll is needed.
+
+A roll is required only if one of the following applies:
+- The outcome branches the story
+- The action involves ability, skill, luck, negotiation, repair, or investigation with uncertainty
+- The player takes significant risk
+- The action involves discovery of hidden information, root-cause analysis, or evidence gathering
+
+No roll needed (need_roll: false) if:
+- The protagonist explicitly chooses death, surrender, or abandonment ("die", "give up", "surrender", etc.)
+- The action describes internal state, emotion, resolve, or acceptance with no observable physical act
+
+Do not judge difficulty by sentence length, complexity, or jargon. Judge only the actual substance of the action.
+
+Reply only in the following JSON format. No other text.
+
+No roll:
+{"need_roll": false}
+
+Roll needed:
+{"need_roll": true, "risk": "low|mid|high", "uncertainty": "low|mid|high", "reason": "reason in 10 chars or less"}
+
+risk: severity of failure consequence (low=minor, mid=moderate, high=severe)
+uncertainty: how unpredictable the outcome is (low=nearly certain, mid=50/50, high=very uncertain)
+"""
+
+def judge(action: str, history: list, language: str = "ja") -> dict | None:
     # 直近のGM応答を文脈として渡す（状況依存の判定精度向上のため）
     last_gm = next(
         (m["content"] for m in reversed(history) if m["role"] == "assistant"),
         None
     )
-    context_line = f"\n現在の状況（直前のGM描写）:\n{last_gm[:300]}\n\n" if last_gm else ""
+    if language == "en":
+        prompt = JUDGE_PROMPT_EN
+        context_line = f"\nCurrent situation (last GM description):\n{last_gm[:300]}\n\n" if last_gm else ""
+        user_content = f"{context_line}Action: {action}"
+    else:
+        prompt = JUDGE_PROMPT
+        context_line = f"\n現在の状況（直前のGM描写）:\n{last_gm[:300]}\n\n" if last_gm else ""
+        user_content = f"{context_line}行動: {action}"
     messages = [
-        {"role": "system", "content": JUDGE_PROMPT},
-        {"role": "user", "content": f"{context_line}行動: {action}"},
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_content},
     ]
     raw = chat_json(messages)
 
@@ -129,13 +163,22 @@ def judge(action: str, history: list) -> dict | None:
         "intensity": intensity,
     }
 
-def display_result(result: dict) -> None:
+def display_result(result: dict, language: str = "ja") -> None:
     """ダイス結果をコンソールに表示する。"""
-    outcome = "成功" if result["success"] else "失敗"
-    intensity_label = {
-        "decisive": "（決定的）",
-        "normal": "",
-        "severe": "（重大）",
-    }.get(result.get("intensity", "normal"), "")
-    print(f"🎲 判定: {result['reason']} / 難易度{result['difficulty']} / 出目{result['dice']} → {outcome}{intensity_label}")
+    if language == "en":
+        outcome = "Success" if result["success"] else "Failure"
+        intensity_label = {
+            "decisive": " (decisive)",
+            "normal": "",
+            "severe": " (severe)",
+        }.get(result.get("intensity", "normal"), "")
+        print(f"🎲 Roll: {result['reason']} / Difficulty {result['difficulty']} / Roll {result['dice']} → {outcome}{intensity_label}")
+    else:
+        outcome = "成功" if result["success"] else "失敗"
+        intensity_label = {
+            "decisive": "（決定的）",
+            "normal": "",
+            "severe": "（重大）",
+        }.get(result.get("intensity", "normal"), "")
+        print(f"🎲 判定: {result['reason']} / 難易度{result['difficulty']} / 出目{result['dice']} → {outcome}{intensity_label}")
 
