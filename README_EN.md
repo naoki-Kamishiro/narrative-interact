@@ -177,40 +177,43 @@ If you use auto-play for research or observation, genres with exploration and pu
 
 ## Model limitations (compromises with Gemma4 12B)
 
-These may improve with a more capable model. Each item's status falls into one of three categories:
-- **Mitigation implemented**: Prompts or processing have been added to reduce how often it occurs
-- **Remaining constraint**: Still occurs at some frequency after mitigation
-- **Model-dependent**: Mitigated, but full resolution depends on the model's ability
+These may improve with a more capable model.
 
-**Mitigation implemented (mostly suppressed, but occurs probabilistically)**
+**Mitigation implemented (still occurs probabilistically)**
 
-- **Ending every turn with a question**: The GM tries to close every turn with "What do you do?" or "Where will you go next?" Suppressed by a prohibition rule
-- **Listing choices as bullet points**: The GM lists options such as "A. Run B. Fight C. Negotiate." Suppressed by a prohibition rule
-- **Ignoring or rewriting dice results**: The GM narrates what is effectively a success on a failed roll, or immediately nullifies a successful roll. Suppressed by consistency rules
-- **Sinking into a single moment**: The GM keeps digging into the same scene or the same target, and the story does not move forward. Suppressed by repetition-limit rules
-- **NPCs voicing the protagonist's inner life**: An NPC delivers lines that thematically explain the meaning of the protagonist's actions, such as "You've truly grown." Suppressed by a prohibition rule
-- **Premature endings**: The GM ends the story on everyday narration such as "went home" or "rested." Suppressed by more detailed ending conditions
+- **Ending every turn with a question**: Closes turns with "What do you do?"
+- **Bulleted choices**: Lists options such as "A. Run B. Fight"
+- **Ignoring dice results**: Narrates a failure as an effective success, or nullifies a success right after
+- **Sinking into a single moment**: Keeps digging into the same scene, and the story stops moving
+- **NPCs explaining or judging**: NPCs explain the meaning of the protagonist's actions or praise their decisions
+- **Premature endings**: Ends the story on everyday narration such as "went home"
 
 **Remaining constraints (still occur at some frequency after mitigation)**
 
-- **Inner life and meaning creeping into the narration**: The GM writes emotional or inner descriptions such as "pride dwells within" or "resolve hardens," or interpretations such as "this means X." Suppressed by a prohibition rule, but it can break down in the later part of long stories or at the climax
-- **Anticipating the landing point**: Motive or theme words written in the plot's ending field (such as "obsession" or "what they wanted to protect") start appearing in NPC dialogue or narration before the ending. Suppressed by a prohibition rule and an instruction to exclude motive words from the ending field, but it tends to occur in genres where motive is the core of the story, such as mystery
+- **Meaning in the narration**: Inner life or interpretation such as "resolve hardens" or "this means X" creeps in. More common late in the story and at the climax
+- **Anticipating the landing point**: Uses motive or theme words from the plot's ending before the ending. Common in mystery
+- **Exceeding the length guideline**: Ignores the 300-character-per-turn guideline, sometimes by a lot depending on genre
 
-**Model-dependent (mitigated, but full resolution depends on the model's ability)**
+**Model-dependent (full resolution depends on the model's ability)**
 
-- **Adding new settings first**: Each time it narrates the result of an action or roll, the GM adds new settings, threats, or characters instead of deriving the result from information already established. The story tends to feel like it grows in setting volume rather than complexity, and cause-and-effect becomes thin. Suppression rules have been added
-- **Uniformly large outcome magnitude**: Success, failure, decisive success, and severe failure all tend to trigger large-scale developments that shake the whole story. The strength of the roll is not reflected in the scale of the result, and the sense of consequence from choices can become monotonous
+- **Adding new settings first**: Adds new settings, threats, or characters instead of deriving results from what is already established
+- **Uniformly large outcomes**: Triggers story-shaking developments regardless of how strong the roll was
+- **Ignoring genre constraints**: Creates hostile developments even in genres where combat is disabled, often triggered by a severe failure
+- **Resolving costs that never happened**: Treats plot costs that never occurred in the story as established facts in the epilogue
+- **Rewriting the player's input**: Narrates a different action from the one entered, to make things fit
+- **Skipping the hook closing**: The closing of the opening hook (hook.closing) is sometimes not narrated in the ending
 
 ---
 
-## Known issues
+## Known issues (player LLM during auto-play)
 
-- **Loops during auto-play**: The player LLM sometimes repeats actions on the same target while subtly changing the verb, such as "grip → clench → put force into." Suppressed by adding to the player prompt: "If actions on the same target continue three times with different verbs, switch to a different target or location." Full resolution is model-dependent.
-- **Inner-life actions by the player LLM**: During auto-play, the player LLM sometimes outputs inner actions such as "make up one's mind" or "convey one's gratitude." Suppressed by adding to the player prompt: "Do not output inner actions that cannot be observed from outside."
-- **Bringing in items from outside the setting**: During auto-play, the player LLM sometimes brings in items or means that do not exist in the story's world (e.g., using a gun in medical horror). Suppressed by adding to the player prompt: "Do not use items or means from outside the story's world."
-- **Fixation on failed targets**: During auto-play, the player LLM sometimes keeps trying the same target even after repeated failures, without switching to another target or location. Suppressed by adding to the player prompt: "If you fail twice in a row on the same target, switch to a different target."
-- **Target-renaming loops by the player LLM**: During auto-play, the player LLM sometimes repeats essentially the same action on the same group while changing the target's name slightly each time, such as "Soldier A," "heavy soldier," "soldier in front." The existing rule ("after three consecutive actions on the same target, move elsewhere") judges individual targets, so it has a loophole when facing a group. Full resolution is model-dependent.
-- **Hook closing tends to be skipped at the ending**: The closing of the opening hook (hook.closing) is sometimes not narrated in the ending or epilogue. Suppressed by instructing "include this in the narration of the landing point" in both the [Plot] section and the [Closing and lingering aftertaste] section of the GM prompt. Full resolution is model-dependent.
+All are suppressed through the player prompt (except the target-renaming loop, which has no mitigation). Full resolution is model-dependent.
+
+- **Verb-changing loops**: Repeats actions on the same target while changing the verb, such as "grip → clench → put force into"
+- **Target-renaming loops**: Repeats actions on the same group while changing what it is called, such as "Soldier A" or "heavy soldier"
+- **Fixation on failed targets**: Does not switch to another target or location after repeated failures
+- **Inner-life actions**: Outputs actions that cannot be seen from outside, such as "make up one's mind"
+- **Means from outside the setting**: Brings in items or means that do not exist in the world, such as a gun in medical horror
 
 ---
 
