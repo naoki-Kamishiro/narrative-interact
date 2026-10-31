@@ -487,8 +487,8 @@ def _build_api_messages(h: list) -> list:
 
 
 def _after_reply(reply: str) -> None:
-    """strongモード / adaptive再生成後 / offモード: GM応答後にビートポインタを進める。"""
-    is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False)) or _is_off()
+    """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
+    is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
     if is_beat_mode:
         s = state.get()
         queue = s.get("beat_queue", [])
@@ -632,10 +632,11 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
     s = state.get()
     gm_character = s.get("gm_character", "none")
 
-    # beatモード（strong/adaptive再生成後/off）での転換点検出: コード側で判定
-    is_beat_mode = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False)) or _is_off()
-    # improv または adaptive再生成前はLLMで判定
-    is_llm_judge = state.get_plot_mode() == "improv" or (_is_adaptive() and not s.get("adaptive_replotted", False))
+    # beatモード（strong/adaptive再生成後）での転換点検出: コード側で判定
+    is_beat_mode = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False))
+    # off / improv / adaptive再生成前はLLMで判定
+    # （offはビートをGMに注入しないため、ビート進行を転換点の根拠にできない）
+    is_llm_judge = _is_off() or state.get_plot_mode() == "improv" or (_is_adaptive() and not s.get("adaptive_replotted", False))
 
     is_turning_point = False
 
@@ -643,7 +644,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
         # beat_just_advanced=True のターンのみ転換点（1回だけ発動）
         is_turning_point = s.get("beat_just_advanced", False)
     elif is_llm_judge:
-        # improv / adaptive再生成前: 毎ターンLLMで判定
+        # off / improv / adaptive再生成前: 毎ターンLLMで判定
         is_turning_point = check_turning_point(h, action)
         if DEBUG_MODE and is_turning_point:
             print("[TURNING] turning point detected (llm judge)", file=sys.stderr)
@@ -673,7 +674,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             print("[TURNING] turning_point_triggered = True", file=sys.stderr)
 
 
-def start_new_game() -> tuple[list, str, str]:
+def start_new_game() -> tuple[list, str, str, str]:
     while not (genre := ask("ジャンル: ").strip()):
         system_print("ジャンルを入力してください。")
     while not (title := ask("タイトル: ").strip()):
@@ -701,7 +702,7 @@ def start_new_game() -> tuple[list, str, str]:
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": gm_character})
 
-    if plot_mode in ("strong", "off") and plot:
+    if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:
@@ -767,7 +768,7 @@ def resume_game() -> tuple[list, str, str] | None:
     dice_mod.set_difficulty_preset(s.get("difficulty_preset", "normal"))
 
     # 旧セーブにbeat_queueがない場合は再構築
-    if plot_mode in ("strong", "off") and plot and not s.get("beat_queue"):
+    if plot_mode == "strong" and plot and not s.get("beat_queue"):
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:
@@ -895,7 +896,7 @@ def run_single_session(plot_mode: str) -> None:
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": BATCH_GM_CHARACTER})
 
-    if plot_mode in ("strong", "off") and plot:
+    if plot_mode == "strong" and plot:
         queue = beat_mod.build_queue(plot)
         state.update({"beat_queue": queue, "beat_ptr": 0, "ending_suppressed": False, "ending_prompted": False})
         if DEBUG_MODE:

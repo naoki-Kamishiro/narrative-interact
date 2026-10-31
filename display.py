@@ -1,6 +1,6 @@
 """
 コンソール色分け表示モジュール。
-GM地の文：黄　登場人物セリフ（「」内）：白　システム：青　エラー：赤　GMキャラコメント：シアン　転換点：太字黄
+GM地の文：黄　登場人物セリフ（「」内）：白　システム：青　エラー：赤　GMキャラコメント：シアン　転換点：明るい黄
 """
 
 import re
@@ -48,7 +48,7 @@ def gm_char_print(text: str) -> None:
     print(BLUE + "GM:" + RESET + " " + CYAN + text + RESET)
 
 def gm_turning_point_print(text: str) -> None:
-    """転換点の描写強化メッセージを表示する（太字黄色）。"""
+    """転換点ターンのGM描写を表示する（明るい黄色）。"""
     print(BOLD_YELLOW + text + RESET)
 
 def system_print(text: str) -> None:

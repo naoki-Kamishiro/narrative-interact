@@ -9,3 +9,7 @@ build/
 .env
 saves/
 *.json
+
+# 開発用メモ（ローカルのみ）
+CLAUDE.md
+handoff_gemini.md
