@@ -202,6 +202,7 @@ These may improve with a more capable model.
 - **Resolving costs that never happened**: Treats plot costs that never occurred in the story as established facts in the epilogue
 - **Rewriting the player's input**: Narrates a different action from the one entered, to make things fit
 - **Skipping the hook closing**: The closing of the opening hook (hook.closing) is sometimes not narrated in the ending
+- **Forced jumps to the landing point**: Abruptly switches location or scene right before the ending to match the plot's landing point. Labels from the plot (such as "the third party") may appear in the text
 
 ---
 
