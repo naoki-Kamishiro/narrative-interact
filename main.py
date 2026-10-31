@@ -1319,7 +1319,11 @@ def main():
                 "role": "user",
                 "content": "今の状況でプレイヤーが取れる行動を3〜4つ提案してください。形式：各行を「・」で始め、行動を10〜20字で簡潔に記述する。説明や補足は不要。"
             }]
-            call_gm(hint_msg)
+            hint_reply = call_gm(hint_msg)
+            if hint_reply == "[CONTEXT_LIMIT]":
+                system_print("コンテキスト上限に達したため、ヒントを生成できません。")
+            elif hint_reply.startswith("[ERROR"):
+                error_print("ヒントの生成に失敗しました。もう一度 /hint を試してください。")
             continue
 
         # ダイス判定（use_diceがTrueの場合のみ。システム強制終了アクションは除外）
