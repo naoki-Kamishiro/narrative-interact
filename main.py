@@ -4,6 +4,7 @@
 """
 
 import sys
+import copy
 import json
 import datetime
 import state
@@ -715,6 +716,7 @@ def start_new_game() -> tuple[list, str, str, str]:
     system_print("行き詰まったら /hint で行動候補を表示できます。")
     print()
 
+    _take_retry_snapshot(h)
     reply = call_gm(_build_api_messages(h))
     if reply == "[CONTEXT_LIMIT]":
         error_print("コンテキスト上限を超えました。LM Studio側のコンテキスト長の設定を見直してください。")
@@ -853,11 +855,39 @@ def handle_ending(h: list) -> tuple[list, bool]:
             return h, True
         system_print("1か2を入力してください。")
 
+# /retry 用: GMへのメッセージ組み立て直前の状態（state + システムプロンプト）
+# _build_api_messages() / _after_reply() は状態を書き換えるため、/retry ではこの時点に戻してから組み立て直す
+_retry_snapshot: dict | None = None
+
+def _take_retry_snapshot(h: list) -> None:
+    global _retry_snapshot
+    sys_msg = next((m["content"] for m in h if m["role"] == "system"), None)
+    _retry_snapshot = {"state": copy.deepcopy(state.get()), "system": sys_msg}
+
+def _restore_retry_snapshot(h: list) -> bool:
+    """スナップショットがあれば state とシステムプロンプトを復元して True を返す。"""
+    if _retry_snapshot is None:
+        return False
+    state.load_from(copy.deepcopy(_retry_snapshot["state"]))
+    if _retry_snapshot["system"] is not None:
+        for i, m in enumerate(h):
+            if m["role"] == "system":
+                h[i] = {"role": "system", "content": _retry_snapshot["system"]}
+                break
+    return True
+
+def _clear_retry_snapshot() -> None:
+    global _retry_snapshot
+    _retry_snapshot = None
+
 def push_user(h: list, content: str, replace_pending: bool) -> list:
     """userメッセージを追加する。replace_pending=Trueなら、エラーで未応答のまま
-    残っている直前のuserメッセージを置き換える（放棄された行動として扱う）。"""
+    残っている直前のuserメッセージを置き換える（放棄された行動として扱う）。
+    ただし物語の開始指示（最初のuserメッセージ）は置き換えずに残す。"""
     if replace_pending and h and h[-1]["role"] == "user":
-        h.pop()
+        first_user_idx = next(i for i, m in enumerate(h) if m["role"] == "user")
+        if len(h) - 1 != first_user_idx:
+            h.pop()
     return hist.add_user(h, content)
 
 def _pick_batch_genre() -> str:
@@ -1117,7 +1147,8 @@ def main():
         pending_failed = (initial_reply == "")
     else:
         initial_reply = ""
-        pending_failed = False
+        # 末尾がuser（応答失敗のままセーブ）なら保留中として扱う
+        pending_failed = bool(h) and h[-1]["role"] == "user"
 
     last_gm_reply = initial_reply  # 自動プレイ用: 最後のGM応答（初回含む）
     auto_play_turn = 0  # 自動プレイのターンカウンタ
@@ -1181,7 +1212,9 @@ def main():
             result = resume_game()
             if result:
                 h, genre, title = result
-                pending_failed = False
+                # 末尾がuser（応答失敗のままセーブ）なら保留中として扱う
+                pending_failed = bool(h) and h[-1]["role"] == "user"
+                _clear_retry_snapshot()
             continue
 
         if action in ("/retry", "/r"):
@@ -1190,6 +1223,11 @@ def main():
             retrying_assistant = h and h[-1]["role"] == "assistant"
             if retrying_assistant:
                 h.pop()
+            # 直前ターンの組み立て前の状態に戻す（エンディング促進カウント・逸脱カウント・
+            # ビート進行・転換点フラグ・adaptive再生成を含む）。元のターンと同じ条件で再生成する。
+            restored = _restore_retry_snapshot(h)
+            if retrying_assistant and not restored:
+                # スナップショットがない場合（ロード直後など）のフォールバック
                 # strong / adaptive再生成後: 直前の_after_reply()でptrが進んでいた場合のみ1つ戻す
                 # （キャラクター未登場でptrが進まなかったターンを戻すと、前のビートを誤って未完了に戻してしまう）
                 s = state.get()
@@ -1272,6 +1310,7 @@ def main():
         # GMキャラクターコメント + 転換点フラグ設定
         _handle_gm_char_and_turning_point(action, h)
 
+        _take_retry_snapshot(h)
         reply = call_gm(_build_api_messages(h))
 
         if reply == "[CONTEXT_LIMIT]":
