@@ -44,7 +44,6 @@ The story ends when the plot reaches its conclusion. The GM decides when that is
 - Python 3.10+
 - [LM Studio](https://lmstudio.ai/) running a local LLM on `localhost:1234`
 - A model capable of following complex Japanese instruction prompts
-- Compatible OS: Windows / macOS / Linux
 
 > **Note:** The GM system prompt is written in Japanese. The model needs to handle Japanese instructions reliably. Models in the 7B–14B range vary significantly in quality for this task.
 
