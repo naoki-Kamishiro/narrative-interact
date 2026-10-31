@@ -1,4 +1,4 @@
-# Narrative Interact v1.0.0
+# Narrative Interact
 
 注・開発途中のためバグがある可能性があります。
 
