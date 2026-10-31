@@ -687,9 +687,7 @@ def start_new_game() -> tuple[list, str, str, str]:
     else:
         difficulty_preset = "normal"
 
-    gm_character = "none"
-    if not AUTO_PLAY_MODE:
-        gm_character = ask_gm_character()
+    gm_character = ask_gm_character()
 
     if plot_mode == "improv":
         system_print("プロット生成なし")
