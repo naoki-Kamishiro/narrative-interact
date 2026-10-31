@@ -1,5 +1,7 @@
 # Narrative Interact v1.0.0
 
+注・開発途中のためバグがある可能性があります。
+
 [English README is here](README_EN.md)
 
 ローカルLLMで動くインタラクティブフィクションシステム。  
