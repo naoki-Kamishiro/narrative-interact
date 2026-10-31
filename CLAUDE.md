@@ -772,27 +772,17 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - `_build_api_messages()`内の全`return msgs`（5箇所）を`return _apply_turning_point_injection(msgs)`に変更
 - これにより全モード・全ターン条件で転換点injectionが確実に発火する
 
-### 2026年10月（commit e208bcc）：英語モード実装（LANGUAGE="en"）
+### 2026年10月（今セッション）：英語化構想（未実装）
 
-**設計方針**
-- 内部処理（GMシステムプロンプト・プロット生成・beat injection・ダイス判定プロンプト・履歴・セーブデータ）はすべて日本語のまま維持
-- プレイヤーが見る出力のみLANGUAGEフラグで切り替える最小変更アプローチ
-- `ENDING_MARKER = "[Ending]"` を両言語で共通化（JA/EN同一文字列）
-- GMシステムプロンプト末尾に1行追加："Write all output in English. Do not mix in any other language."
+**方針**
+- GMシステムプロンプトは日本語のまま維持（再調整コスト・検証コストが高いため）
+- GMの出力のみ英語化する最小変更アプローチ
+- プロンプトに「出力は英語で」を追加する方向で検討中
+- UIも言語選択対応にする（起動時に日本語/英語を選択）
+- 二重管理を避けるためzipを分けずメニューで切り替える設計
+- redditへの投稿を視野に入れている（r/LocalLLaMA想定）
 
-**変更ファイル**
-
-- `display.py`：`_display_language` グローバル・`set_display_language()`追加。`system_print()` / `error_print()` にEN分岐
-- `dice.py`：`JUDGE_PROMPT_EN`追加。`judge(language=)`・`display_result(language=)` パラメータ化
-- `api.py`：`_api_language` グローバル・`set_api_language()`追加。スピナー文字列・GMキャラコメントEN対応（`GM_CHAR_PROMPTS_EN`）
-- `prompt.py`：`build_system_prompt(language=)` - EN時にプロンプト末尾へEN出力指示を追加
-- `history.py`：`new_history()` / `rebuild_system()` に `language=` パラメータ追加
-- `main.py`：
-  - `LANGUAGE: str = "ja"` / `BATCH_LANGUAGE: str = "ja"` グローバル追加
-  - `ask_language()` - 起動時にバナー前で言語選択（1:日本語 / 2:English）
-  - `COMMANDS_EN` dict - ENコマンド名辞書（/quit, /save, /load, /help, /retry, /hint）
-  - `PLAYER_SYSTEM_NORMAL_EN` / `PLAYER_SYSTEM_DEVIATE_EN` - EN auto-playプロンプト
-  - `BATCH_GENRES_EN` - ENバッチ用ジャンルリスト（12種）
-  - ゲームループ・メニュー・セーブロード・バッチ・自動プレイ・ダイス・コマンド全箇所にEN分岐
-
-**Strongモードへの影響：ゼロ**
+**現時点の確認事項**
+- 英語で行動を入力してもGMは日本語で返すことを確認済み
+- 「出力は英語で」の一行追加で英語出力になる可能性が高い（未検証）
+- **実装はユーザー確認後に着手すること**

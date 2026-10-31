@@ -284,7 +284,7 @@ def build_adaptive_replot_system_prompt(new_plot: dict, genre: str = "") -> str:
     return "\n".join(lines)
 
 
-def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "", language: str = "ja") -> str:
+def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> str:
     """genre_traitsとplot_modeを反映した動的システムプロンプトを生成する。
     strongモードではビート注入方式を使うため、【反転】【失敗・挫折】【重要選択】【思い込みと真実】節は除外する。
     """
@@ -488,10 +488,7 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "", lan
                 lines.append(f"- フック回収: {ending_note['hook_resolution']}（着地点の描写に含めること）")
             # theme_closure は内面・抽象語を含むためGMには渡さない
 
-    system = "\n".join(lines)
-    if language == "en":
-        system += "\nWrite all output in English. Do not mix in any other language."
-    return system
+    return "\n".join(lines)
 
 def build_plot_message(genre: str, title: str) -> str:
     return f"ジャンル: {genre}\nタイトル: {title}\n\n物語設計を行ってください。"

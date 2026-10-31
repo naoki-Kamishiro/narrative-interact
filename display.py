@@ -51,23 +51,11 @@ def gm_turning_point_print(text: str) -> None:
     """転換点の描写強化メッセージを表示する（太字黄色）。"""
     print(BOLD_YELLOW + text + RESET)
 
-_display_language: str = "ja"
-
-def set_display_language(lang: str) -> None:
-    global _display_language
-    _display_language = lang
-
 def system_print(text: str) -> None:
-    if _display_language == "en":
-        print(BLUE + f"[System: {text}]" + RESET)
-    else:
-        print(BLUE + f"[システム: {text}]" + RESET)
+    print(BLUE + f"[システム: {text}]" + RESET)
 
 def error_print(text: str) -> None:
-    if _display_language == "en":
-        print(RED + f"[Error: {text}]" + RESET)
-    else:
-        print(RED + f"[エラー: {text}]" + RESET)
+    print(RED + f"[エラー: {text}]" + RESET)
 
 def hr() -> None:
     print(HR)
