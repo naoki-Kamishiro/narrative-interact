@@ -111,7 +111,17 @@ def ask(prompt: str) -> str:
         print()
         return ""
 
-def call_gm(messages: list, max_retries: int = 1) -> str:
+def _show_gm_reply(reply: str, turning_point: bool) -> None:
+    """GM応答を表示する。転換点ターンは明るい黄色。"""
+    if turning_point:
+        gm_turning_point_print(reply)
+    else:
+        gm_print(reply)
+
+
+def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
+    """GM応答を生成する。display=False の場合は表示を呼び出し側に任せる
+    （エンディング早出し抑止の判定後に表示するため）。"""
     reply = chat(messages)
     # コンテキスト上限はリトライせず即返す
     if reply == "[CONTEXT_LIMIT]":
@@ -131,11 +141,8 @@ def call_gm(messages: list, max_retries: int = 1) -> str:
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
-        s = state.get()
-        if s.get("turning_point_injected", False):
-            gm_turning_point_print(reply)
-        else:
-            gm_print(reply)
+        if display:
+            _show_gm_reply(reply, state.get().get("turning_point_injected", False))
     return reply
 
 
@@ -1242,7 +1249,8 @@ def main():
                             queue[new_ptr] = dict(queue[new_ptr])
                             queue[new_ptr]["done"] = False
                         state.update({"beat_ptr": new_ptr, "beat_queue": queue})
-            reply = call_gm(_build_api_messages(h))
+            reply = call_gm(_build_api_messages(h), display=False)
+            _tp = state.get().get("turning_point_injected", False)
             if reply == "[CONTEXT_LIMIT]":
                 system_print("コンテキスト上限に達し続行不可能の為、物語をここで終了します。")
                 state.update({"end_reason": "context_limit"})
@@ -1255,6 +1263,7 @@ def main():
             pending_failed = False
             h = hist.add_assistant(h, reply)
             _after_reply(reply)
+            suppressed = False
             if check_ending(reply):
                 _use_beat_suppression = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
                 if _use_beat_suppression and not state.get().get("ending_suppressed", False):
@@ -1267,7 +1276,11 @@ def main():
                         cleaned_reply = h[-1]["content"].replace(ENDING_MARKER, "").strip()
                         h[-1] = {"role": "assistant", "content": cleaned_reply}
                         last_gm_reply = cleaned_reply
-                        continue
+            # 早出し抑止の判定後に表示する（抑止した場合はマーカーを除いた本文を表示）
+            _show_gm_reply(h[-1]["content"] if suppressed else reply, _tp)
+            if suppressed:
+                continue
+            if check_ending(reply):
                 h, quit_ = handle_ending(h)
                 if AUTO_PLAY_MODE or DEBUG_MODE:
                     save_session_json(h, title)
@@ -1311,7 +1324,8 @@ def main():
         _handle_gm_char_and_turning_point(action, h)
 
         _take_retry_snapshot(h)
-        reply = call_gm(_build_api_messages(h))
+        reply = call_gm(_build_api_messages(h), display=False)
+        _tp = state.get().get("turning_point_injected", False)
 
         if reply == "[CONTEXT_LIMIT]":
             system_print("コンテキスト上限に達し続行不可能の為、物語をここで終了します。")
@@ -1333,6 +1347,7 @@ def main():
         last_gm_reply = reply
         _after_reply(reply)
 
+        suppressed = False
         if check_ending(reply):
             # strong / adaptive再生成後のエンディング早出し抑止
             _use_beat_suppression = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
@@ -1347,8 +1362,13 @@ def main():
                     cleaned_reply = h[-1]["content"].replace(ENDING_MARKER, "").strip()
                     h[-1] = {"role": "assistant", "content": cleaned_reply}
                     last_gm_reply = cleaned_reply  # プレイヤーLLMにマーカーが渡らないよう更新
-                    continue
 
+        # 早出し抑止の判定後に表示する（抑止した場合はマーカーを除いた本文を表示）
+        _show_gm_reply(h[-1]["content"] if suppressed else reply, _tp)
+        if suppressed:
+            continue
+
+        if check_ending(reply):
             h, quit_ = handle_ending(h)
             if AUTO_PLAY_MODE or DEBUG_MODE:
                 save_session_json(h, title)
