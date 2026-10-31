@@ -702,6 +702,10 @@ def start_new_game() -> tuple[list, str, str, str]:
         plot = {}
     else:
         plot = plot_mod.generate(genre, title)
+        if not plot:
+            # プロットなしでは strong/adaptive/off の仕組み（ビート・逸脱判定・終了誘導）が働かないため即興で続行する
+            system_print("プロット生成に失敗したため、即興モードに切り替えます。")
+            plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
     state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset,
@@ -933,6 +937,10 @@ def run_single_session(plot_mode: str) -> None:
         plot = {}
     else:
         plot = plot_mod.generate(genre, title)
+        if not plot:
+            # プロットなしでは strong/adaptive/off の仕組み（ビート・逸脱判定・終了誘導）が働かないため即興で続行する
+            system_print("プロット生成に失敗したため、即興モードに切り替えます。")
+            plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
     state.update({"use_dice": BATCH_USE_DICE, "difficulty_preset": difficulty_preset,
