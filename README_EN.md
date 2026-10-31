@@ -1,5 +1,7 @@
 # Narrative Interact v1.1.0
 
+> ⚠️ **This is a beta version.** For the stable version, please use [v1.0.0](https://github.com/naoki-Kamishiro/narrative-interact/releases/tag/v1.0.0).
+
 An interactive fiction system that runs on a local LLM via LM Studio.
 
 You specify a genre and a title — the AI generates the plot, and you play through it by typing actions in natural language.
