@@ -716,6 +716,9 @@ def start_new_game() -> tuple[list, str, str, str]:
     print()
 
     reply = call_gm(_build_api_messages(h))
+    if reply == "[CONTEXT_LIMIT]":
+        error_print("コンテキスト上限を超えました。LM Studio側のコンテキスト長の設定を見直してください。")
+        reply = "[ERROR: context limit]"
     # 主人公名を表示（improvは開始シーンから抽出、他モードはプロットから取得）
     if not reply.startswith("[ERROR"):
         if plot_mode == "improv":
@@ -774,6 +777,11 @@ def resume_game() -> tuple[list, str, str] | None:
     title = s.get("title", "")
     genre = s.get("genre", "")
     h = hist.rebuild_system(h, plot, plot_mode, genre)
+    # adaptive再生成後のセーブは、再生成後のシステムプロンプトで組み直す
+    new_plot = s.get("adaptive_new_plot")
+    if plot_mode == "adaptive" and s.get("adaptive_replotted", False) and new_plot:
+        new_sys_prompt = build_adaptive_replot_system_prompt(new_plot, s.get("adaptive_new_genre", genre))
+        h = [{"role": "system", "content": new_sys_prompt}] + [m for m in h if m["role"] != "system"]
     system_print(f"ロード完了: 「{title}」　履歴を表示します...")
     print()
 
@@ -822,7 +830,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
         # 自動プレイ時はエピローグを自動生成して終了
         h = hist.add_user(h, EPILOGUE_PROMPT)
         reply = call_gm(hist.build_for_api(h))
-        if reply.startswith("[ERROR"):
+        if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
             error_print("エピローグの生成に失敗しました。")
             h.pop()
         else:
@@ -837,7 +845,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
         if ans == "2":
             h = hist.add_user(h, EPILOGUE_PROMPT)
             reply = call_gm(hist.build_for_api(h))
-            if reply.startswith("[ERROR"):
+            if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
                 error_print("エピローグの生成に失敗しました。")
                 h.pop()
             else:
@@ -1182,9 +1190,11 @@ def main():
             retrying_assistant = h and h[-1]["role"] == "assistant"
             if retrying_assistant:
                 h.pop()
-                # strongモード: 直前の_after_reply()で進んだptrを1つ戻す
-                if _is_strong():
-                    s = state.get()
+                # strong / adaptive再生成後: 直前の_after_reply()でptrが進んでいた場合のみ1つ戻す
+                # （キャラクター未登場でptrが進まなかったターンを戻すと、前のビートを誤って未完了に戻してしまう）
+                s = state.get()
+                _beat_ctrl = _is_strong() or (_is_adaptive() and s.get("adaptive_replotted", False))
+                if _beat_ctrl and s.get("beat_just_advanced", False):
                     ptr = s.get("beat_ptr", 0)
                     if ptr > 0:
                         new_ptr = ptr - 1
@@ -1263,6 +1273,14 @@ def main():
         _handle_gm_char_and_turning_point(action, h)
 
         reply = call_gm(_build_api_messages(h))
+
+        if reply == "[CONTEXT_LIMIT]":
+            system_print("コンテキスト上限に達し続行不可能の為、物語をここで終了します。")
+            state.update({"end_reason": "context_limit"})
+            save_mod.save(state.get(), h)
+            if AUTO_PLAY_MODE or DEBUG_MODE:
+                save_session_json(h, title)
+            break
 
         if reply.startswith("[ERROR"):
             error_print("応答生成に失敗しました。/retryで再試行できます。")
