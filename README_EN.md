@@ -164,7 +164,7 @@ A mode where an LLM also handles the player's input. Used for prompt verificatio
 ```bash
 python main.py --normal           # Normal mode
 python main.py --deviate          # Deviate mode (actions that deliberately go beyond GM constraints)
-python main.py --debug            # Manual play with debug output
+python main.py --debug            # Manual play with debug output (the session log is overwritten as JSON after every action)
 python main.py --normal --batch 5   # Batch run (5 consecutive runs with random genres and titles)
 python main.py --deviate --batch 5  # Batch run in deviate mode
 ```

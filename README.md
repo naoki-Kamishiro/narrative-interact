@@ -162,7 +162,7 @@ TEMPERATURE   = 0.85
 ```bash
 python main.py --normal           # 通常モード
 python main.py --deviate          # 逸脱モード（GM制約を意図的に超える行動）
-python main.py --debug            # 手動プレイ＋デバッグ出力あり
+python main.py --debug            # 手動プレイ＋デバッグ出力あり（セッションログを1行動ごとにJSONで上書き保存）
 python main.py --normal --batch 5   # バッチ実行（ランダムなジャンル・タイトルで5回連続）
 python main.py --deviate --batch 5  # 逸脱モードでバッチ実行
 ```

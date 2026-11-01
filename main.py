@@ -737,6 +737,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
 
 
 def start_new_game() -> tuple[list, str, str, str]:
+    _reset_session_log()
     while not (genre := ask("ジャンル: ").strip()):
         system_print("ジャンルを入力してください。")
     while not (title := ask("タイトル: ").strip()):
@@ -826,6 +827,7 @@ def _print_history(h: list) -> None:
                 print(f"\nあなたの行動: {action_line}")
 
 def resume_game() -> tuple[list, str, str] | None:
+    _reset_session_log()
     s, h = save_mod.load()
     if not s or not h:
         system_print("セーブデータが見つかりません。")
@@ -856,8 +858,26 @@ def resume_game() -> tuple[list, str, str] | None:
 
     return h, genre, title
 
-def save_session_json(h: list, title: str) -> None:
-    """AUTO_PLAYモード用: セッション全体をJSONで保存する。"""
+# セッションログ（JSON）の保存先。1セッション中は同じファイルに上書きする
+_session_log_path: str | None = None
+
+
+def _reset_session_log() -> None:
+    """新しいセッション（新規開始・ロード・バッチの各回）で保存先をリセットする。"""
+    global _session_log_path
+    _session_log_path = None
+
+
+def _autosave_debug_log(h: list, title: str) -> None:
+    """--debug の手動プレイ時: 1行動ごとにセッションログを上書き保存する。"""
+    if DEBUG_MODE and not AUTO_PLAY_MODE:
+        save_session_json(h, title, quiet=True)
+
+
+def save_session_json(h: list, title: str, quiet: bool = False) -> None:
+    """セッション全体をJSONで保存する。同一セッション中は同じファイルに上書きする。
+    quiet=True のときは、保存先が決まった後の保存メッセージを出さない。"""
+    global _session_log_path
     # Windows/Linux共通で問題になる文字を全て除去
     import re as _re
     import subprocess as _sp
@@ -879,14 +899,22 @@ def save_session_json(h: list, title: str) -> None:
         except Exception:
             commit_hash = "unknown"
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
+    first_save = _session_log_path is None
+    if first_save:
+        _session_log_path = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
+    filename = _session_log_path
     data = {
         "state": state.get(),
         "history": h,
     }
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    system_print(f"セッションを保存しました: {filename}")
+    if quiet and not first_save:
+        return
+    if quiet:
+        system_print(f"セッションログを1行動ごとに上書き保存します: {filename}")
+    else:
+        system_print(f"セッションを保存しました: {filename}")
 
 def handle_ending(h: list) -> tuple[list, bool]:
     """エンディング後の選択を処理する。戻り値は (履歴, 終了するか)。"""
@@ -969,6 +997,7 @@ def run_single_session(plot_mode: str) -> None:
     """
     global AUTO_PLAY_MODE, DEBUG_MODE
 
+    _reset_session_log()
     # ジャンルをリストから選択し、タイトルのみLLMに生成させる
     genre = _pick_batch_genre()
     result = generate_genre_title(genre)
@@ -1219,6 +1248,7 @@ def main():
             return
         # 初回生成が失敗した場合（空文字）はpending_failedをTrueに
         pending_failed = (initial_reply == "")
+        _autosave_debug_log(h, title)
     else:
         initial_reply = ""
         # 末尾がuser（応答失敗のままセーブ）なら保留中として扱う
@@ -1289,6 +1319,7 @@ def main():
                 # 末尾がuser（応答失敗のままセーブ）なら保留中として扱う
                 pending_failed = bool(h) and h[-1]["role"] == "user"
                 _clear_retry_snapshot()
+                _autosave_debug_log(h, title)
             continue
 
         if action in ("/retry", "/r"):
@@ -1345,6 +1376,7 @@ def main():
                         last_gm_reply = cleaned_reply
             # 早出し抑止の判定後に表示する（抑止した場合はマーカーを除いた本文を表示）
             _show_gm_reply(h[-1]["content"] if suppressed else reply, _tp)
+            _autosave_debug_log(h, title)
             if suppressed:
                 continue
             if check_ending(reply):
@@ -1436,6 +1468,7 @@ def main():
 
         # 早出し抑止の判定後に表示する（抑止した場合はマーカーを除いた本文を表示）
         _show_gm_reply(h[-1]["content"] if suppressed else reply, _tp)
+        _autosave_debug_log(h, title)
         if suppressed:
             continue
 
