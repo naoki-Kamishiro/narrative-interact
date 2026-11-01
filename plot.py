@@ -157,6 +157,18 @@ def _validate_and_repair(plot: dict) -> dict:
         plot["climax"] = climax
         if DEBUG_MODE:
             print("[plot修復] climax が空だったため他フィールドから補完しました", file=sys.stderr)
+    # ending が dict / list で返った場合は文字列に正規化する
+    # （そのままだと GMへのプロンプトに {'scene_description': ...} のような表記が入る）
+    ending = plot.get("ending")
+    if isinstance(ending, dict):
+        vals = [str(v).strip() for v in ending.values() if isinstance(v, (str, int, float)) and str(v).strip()]
+        plot["ending"] = " ".join(vals)
+        if DEBUG_MODE:
+            print("[plot修復] ending が dict だったため文字列に変換しました", file=sys.stderr)
+    elif isinstance(ending, list):
+        plot["ending"] = " ".join(str(v).strip() for v in ending if isinstance(v, (str, int, float)) and str(v).strip())
+        if DEBUG_MODE:
+            print("[plot修復] ending が list だったため文字列に変換しました", file=sys.stderr)
     if not plot.get("ending"):
         plot["ending"] = ""
         if DEBUG_MODE:
