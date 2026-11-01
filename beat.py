@@ -37,6 +37,8 @@ _TEMPLATES = {
     "choice":        "今回の描写で、{content}という局面をプレイヤーが直面する形で描写すること。選択を迫ること。代償は{cost}。",
     "twist":         "今回の描写で、{content}という出来事を世界の側から発生させること。プレイヤーが関係する行動をとらなくても起こすこと。事実はNPCが台詞で言ってよいが、その事実が主人公にとって何を意味するかはNPCも地の文も言わないこと。",
     "character":     "{name}が現在地へ現れ、プレイヤーと接触すること。",
+    # [実験] クライマックスビート（キューの最後に1つだけ追加）
+    "climax":        "今回の描写で、クライマックスの場面を描くこと。舞台は{setting}。現在地が舞台と異なる場合は、無理に場所を移さず、現在地から舞台につながる形で場面を進めてよい。場面の再構成や処理内容の説明は書かないこと。対立は{conflict_type}。山場は「{peak}」。山場が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果を描写すること。このターンでは物語を完結させず、【エンディング】は出力しないこと。",
 }
 
 def build_queue(plot: dict) -> list:
@@ -121,6 +123,20 @@ def build_queue(plot: dict) -> list:
         TYPE_ORDER.get(b["type"], 99),
     ))
 
+    # [実験] クライマックスビートをキューの最後に追加（エンディング誘導はこれを消化した後に始まる）
+    climax = plot.get("climax", {})
+    if isinstance(climax, dict) and (climax.get("setting") or climax.get("peak")):
+        queue.append({
+            "src": "climax",
+            "src_idx": 0,
+            "type": "climax",
+            "timing": "クライマックス",
+            "setting": climax.get("setting", "") or "物語の最深部",
+            "conflict_type": climax.get("conflict_type", "") or "主要な対立の決着",
+            "peak": climax.get("peak", "") or "主要な対立の決着",
+            "done": False,
+        })
+
     return queue
 
 
@@ -135,6 +151,9 @@ def make_injection(beat: dict) -> str:
         return tmpl.format(name=beat.get("name", ""))
     elif t == "choice":
         return tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
+    elif t == "climax":
+        return tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
+                           peak=beat.get("peak", ""))
     else:
         return tmpl.format(content=beat.get("content", ""))
 
@@ -248,7 +267,8 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
     戻り値: (更新後queue, 新ptr, 抑止したか)
     """
     # 未完了のcharacterビートだけ抽出
-    pending_chars = [b for b in queue[ptr:] if b.get("type") == "character" and not b["done"]]
+    # [実験] クライマックスビートも未消化なら残す
+    pending_chars = [b for b in queue[ptr:] if b.get("type") in ("character", "climax") and not b["done"]]
 
     if not pending_chars:
         # 注入するものがない: エンディングを通す
@@ -256,7 +276,7 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
 
     # characterビートだけを残し、残りは破棄（done=Trueにして読み飛ばす）
     for i in range(ptr, len(queue)):
-        if queue[i].get("type") != "character":
+        if queue[i].get("type") not in ("character", "climax"):
             queue[i]["done"] = True
 
     _debug(f"[BEAT] ending suppressed: {len(pending_chars)} character beat(s) remaining")

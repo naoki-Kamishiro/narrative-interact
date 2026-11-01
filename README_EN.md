@@ -72,7 +72,7 @@ Finally, choose whether the GM one-liner is on or off.
 
 Each mode differs in how strongly the plot constrains the GM. The same player actions can lead to very different endings depending on the mode. This difference is intentional by design.
 
-- **Strict**: The system injects a beat (a story milestone) into the GM every turn and forces the plot to be resolved
+- **Strict**: The system injects a beat (a story milestone) into the GM every turn and forces the plot to be resolved. After a choice is posed, the next turn is spent narrating the result of that choice, and the climax scene is narrated before the story heads to its ending
 - **Adaptive**: Deviation is checked every turn. After a cumulative 3 deviation judgments, an instruction encouraging convergence is injected; after a cumulative 5, the LLM regenerates a new plot and beat control guides the story to a landing (the count is not reset by turns without deviation)
 - **Free**: The plot is only passed to the GM as reference in the system prompt; no beats are injected. Deviation is never forced back
 - **Improv**: No plot generation and no beat injection; the story advances on the GM's output alone
@@ -98,6 +98,8 @@ Read the GM's narration and type an action as the protagonist.
 ```
 
 Actions are free-form. The GM does not reject the player's actions; it changes the world as a result of them.
+
+The world moves even if the player does nothing. Just watching or waiting still lets the story advance through the passage of time and the decisions of other characters (if you don't choose when a choice is posed, the result of not choosing is narrated).
 
 ### 3. Dice resolution
 
