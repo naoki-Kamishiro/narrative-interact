@@ -139,7 +139,7 @@ GMキャラクター機能・転換点描写強化の動作試験完了。
 ## 最新コミット一覧（直近10件）
 
 ```
-39bd262 Merge experiment/choice-beat: strongの選択ビート改善とクライマックスビートを取り込む
+b32a145 Merge experiment/choice-beat: strongの選択ビート改善とクライマックスビートを取り込む
 3a46b36 fix: プロットのendingがdict/listで返った場合に文字列へ正規化する
 cd4b80a fix: strongの転換点を物語の節目のビートが進んだターンに限定する
 3b6c876 ci: mainへのpushごとにVERSIONを最新コミットハッシュへ自動更新する
