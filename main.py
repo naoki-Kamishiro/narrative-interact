@@ -42,6 +42,21 @@ EPILOGUE_PROMPT = (
     "など抽象語は使用しないこと。"
 )
 
+
+def _build_epilogue_prompt() -> str:
+    """エピローグ依頼文を組み立てる。
+    strongで選択の局面を経た場合は、その選択の結果を回収対象に含めるよう指示を足す。"""
+    choices = state.get().get("choice_log", [])
+    if not choices:
+        return EPILOGUE_PROMPT
+    listed = "／".join(f"「{c}」" for c in choices)
+    return (
+        EPILOGUE_PROMPT
+        + f"本編でプレイヤーが直面した選択：{listed}。"
+        "回収する1〜2点のうち少なくとも1点は、これらの選択でプレイヤーが取った行動の結果から選ぶこと"
+        "（本編で描写された結果に限る）。"
+    )
+
 # 自動プレイモード（起動引数で設定）
 AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸脱
 
@@ -330,12 +345,14 @@ def _build_api_messages(h: list) -> list:
             plot = s.get("plot", {})
             climax_setting = plot.get("climax", {}).get("setting", "")
             ending = plot.get("ending", "")
+            hook_clause = _hook_closing_clause(plot)
             if climax_setting and ending:
                 injection = (
                     f"全てのプロット要素が出揃いました。"
                     f"クライマックスの舞台「{climax_setting}」と着地点「{ending}」に向けて、"
                     f"プレイヤーの行動に応じて物語を一歩進めてください。"
                     f"物語が自然に完結した場合は、最後の1行に「【エンディング】」とのみ出力すること。"
+                    f"{hook_clause}"
                 )
             else:
                 injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
@@ -356,6 +373,7 @@ def _build_api_messages(h: list) -> list:
             plot = s.get("plot", {})
             climax_setting = plot.get("climax", {}).get("setting", "")
             ending = plot.get("ending", "")
+            hook_clause = _hook_closing_clause(plot)
             if post_count >= 2:
                 # 2ターン目以降は強制モード
                 if climax_setting and ending:
@@ -364,6 +382,7 @@ def _build_api_messages(h: list) -> list:
                         f"プレイヤーが何をしようとも、着地点「{ending}」の結末を迎えます。"
                         f"新たな障壁や展開を追加せず、必ずこのターンで締めくくること。"
                         f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
+                        f"{hook_clause}"
                     )
                 else:
                     injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「【エンディング】」とのみ出力してください。"
@@ -373,6 +392,7 @@ def _build_api_messages(h: list) -> list:
                     injection = (
                         f"着地点「{ending}」に向けて、物語をクロージングへ導いてください。"
                         f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
+                        f"{hook_clause}"
                     )
                 else:
                     injection = "物語をクロージングへ導いてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
@@ -525,6 +545,14 @@ def _is_turning_point_beat(beat: dict) -> bool:
     return False
 
 
+def _hook_closing_clause(plot: dict) -> str:
+    """strongのエンディング誘導に足すフック回収の指示文。フック回収が未設定なら空文字。"""
+    closing = (plot.get("hook") or {}).get("closing", "") or (plot.get("ending_note") or {}).get("hook_resolution", "")
+    if not closing:
+        return ""
+    return f"物語を完結させる場合は、着地点の描写に冒頭フックの回収「{closing}」を含めること。"
+
+
 def _after_reply(reply: str) -> None:
     """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
     is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
@@ -555,7 +583,10 @@ def _after_reply(reply: str) -> None:
                       "turning_point_beat": tp_beat})
         # strong: 選択ビートが消化されたら、次の1ターンは次のビートを注入せず選択の結果を描かせる
         if _is_strong() and advanced and 0 < ptr <= len(queue) and queue[ptr - 1].get("type") == "choice":
-            state.update({"choice_hold": True})
+            # エピローグで選択の結果を回収させるため、提示した選択を記録する
+            choice_log = list(state.get().get("choice_log", []))
+            choice_log.append(queue[ptr - 1].get("content", ""))
+            state.update({"choice_hold": True, "choice_log": choice_log})
             if DEBUG_MODE:
                 print("[BEAT] choice hold set", file=sys.stderr)
     else:
@@ -923,7 +954,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
         end_reason = "ending"
         state.update({"end_reason": end_reason})
         # 自動プレイ時はエピローグを自動生成して終了
-        h = hist.add_user(h, EPILOGUE_PROMPT)
+        h = hist.add_user(h, _build_epilogue_prompt())
         reply = call_gm(hist.build_for_api(h))
         if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
             error_print("エピローグの生成に失敗しました。")
@@ -938,7 +969,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
         if ans == "1":
             return h, True
         if ans == "2":
-            h = hist.add_user(h, EPILOGUE_PROMPT)
+            h = hist.add_user(h, _build_epilogue_prompt())
             reply = call_gm(hist.build_for_api(h))
             if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
                 error_print("エピローグの生成に失敗しました。")
