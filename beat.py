@@ -37,7 +37,7 @@ _TEMPLATES = {
     "choice":        "今回の描写で、{content}という局面をプレイヤーが直面する形で描写すること。選択を迫ること。代償は{cost}。",
     "twist":         "今回の描写で、{content}という出来事を世界の側から発生させること。プレイヤーが関係する行動をとらなくても起こすこと。事実はNPCが台詞で言ってよいが、その事実が主人公にとって何を意味するかはNPCも地の文も言わないこと。",
     "character":     "{name}が現在地へ現れ、プレイヤーと接触すること。",
-    # [実験] クライマックスビート（キューの最後に1つだけ追加）
+    # クライマックスビート（キューの最後に1つだけ追加）
     "climax":        "今回の描写で、クライマックスの場面を描くこと。舞台は{setting}。現在地が舞台と異なる場合は、無理に場所を移さず、現在地から舞台につながる形で場面を進めてよい。場面の再構成や処理内容の説明は書かないこと。対立は{conflict_type}。山場は「{peak}」。山場が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果を描写すること。このターンでは物語を完結させず、【エンディング】は出力しないこと。",
 }
 
@@ -123,7 +123,7 @@ def build_queue(plot: dict) -> list:
         TYPE_ORDER.get(b["type"], 99),
     ))
 
-    # [実験] クライマックスビートをキューの最後に追加（エンディング誘導はこれを消化した後に始まる）
+    # クライマックスビートをキューの最後に追加（エンディング誘導はこれを消化した後に始まる）
     climax = plot.get("climax", {})
     if isinstance(climax, dict) and (climax.get("setting") or climax.get("peak")):
         queue.append({
@@ -194,11 +194,19 @@ def inject(messages: list, queue: list, ptr: int) -> tuple[list, str | None]:
     return msgs, debug
 
 
+def _kata_to_hira(text: str) -> str:
+    """カタカナ（ァ〜ヶ）をひらがなに変換する。長音符などはそのまま。"""
+    return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in text)
+
+
 def detect_character(response: str, name: str) -> bool:
     """GM応答にキャラクター名が含まれるか照合する。
     複合表記（・／（）／または／()）を分割し、各トークンでも照合する。
+    カタカナとひらがなは同一視する（例：ウサギ ⇔ うさぎ）。
     いずれかがresponseに含まれればTrue。
     """
+    response = _kata_to_hira(response)
+    name = _kata_to_hira(name)
     if name in response:
         return True
     # 区切り文字で分割してトークンを取り出す
@@ -267,7 +275,7 @@ def handle_ending_suppression(queue: list, ptr: int) -> tuple[list, int, bool]:
     戻り値: (更新後queue, 新ptr, 抑止したか)
     """
     # 未完了のcharacterビートだけ抽出
-    # [実験] クライマックスビートも未消化なら残す
+    # クライマックスビートも未消化なら残す
     pending_chars = [b for b in queue[ptr:] if b.get("type") in ("character", "climax") and not b["done"]]
 
     if not pending_chars:

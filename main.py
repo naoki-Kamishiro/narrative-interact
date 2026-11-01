@@ -305,7 +305,7 @@ def _build_api_messages(h: list) -> list:
         queue = s.get("beat_queue", [])
         ptr = s.get("beat_ptr", 0)
         if s.get("choice_hold", False):
-            # [実験] 選択ビート直後の保留ターン：次のビートは注入せず、選択への応答の結果を描かせる
+            # 選択ビート直後の保留ターン：次のビートは注入せず、選択への応答の結果を描かせる
             msgs = [dict(m) for m in hist.build_for_api(h)]
             injection = (
                 "直前の場面でプレイヤーに選択を迫った。このターンはプレイヤーの行動をその選択への応答として扱い、"
@@ -528,7 +528,7 @@ def _is_turning_point_beat(beat: dict) -> bool:
 def _after_reply(reply: str) -> None:
     """strongモード / adaptive再生成後: GM応答後にビートポインタを進める。"""
     is_beat_mode = _is_strong() or (_is_adaptive() and state.get().get("adaptive_replotted", False))
-    # [実験] strong: 選択ビート直後の保留ターン。ビートを注入していないので進めない
+    # strong: 選択ビート直後の保留ターン。ビートを注入していないので進めない
     if _is_strong() and state.get().get("choice_hold", False):
         state.update({"choice_hold": False, "beat_just_advanced": False, "turning_point_beat": False,
                       "turning_point_injected": False})
@@ -553,7 +553,7 @@ def _after_reply(reply: str) -> None:
                 tp_beat = last_beat.get("timing") == "中盤"
         state.update({"beat_queue": queue, "beat_ptr": ptr, "beat_just_advanced": advanced,
                       "turning_point_beat": tp_beat})
-        # [実験] strong: 選択ビートが消化されたら、次の1ターンは次のビートを注入せず選択の結果を描かせる
+        # strong: 選択ビートが消化されたら、次の1ターンは次のビートを注入せず選択の結果を描かせる
         if _is_strong() and advanced and 0 < ptr <= len(queue) and queue[ptr - 1].get("type") == "choice":
             state.update({"choice_hold": True})
             if DEBUG_MODE:
