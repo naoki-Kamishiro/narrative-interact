@@ -515,7 +515,7 @@ def _is_turning_point_beat(beat: dict) -> bool:
     序盤の思い込み・序盤の失敗・キャラクター登場・中盤の思い込み・中盤の選択は転換点にしない。"""
     t = beat.get("type")
     timing = beat.get("timing", "")
-    if t == "twist":
+    if t in ("twist", "climax"):
         return True
     if t == "failure":
         return timing != "序盤"
