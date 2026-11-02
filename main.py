@@ -375,7 +375,7 @@ def _build_api_messages(h: list) -> list:
                     f"クライマックスの舞台「{climax_setting}」と着地点「{ending}」に向けて、"
                     f"プレイヤーの行動に応じて物語を一歩進めてください。"
                     f"物語が自然に完結した場合は、最後の1行に「【エンディング】」とのみ出力すること。"
-                    f"{hook_clause}"
+                    f"{hook_clause}{_ENDING_GUARD}"
                 )
             else:
                 injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
@@ -405,7 +405,7 @@ def _build_api_messages(h: list) -> list:
                         f"プレイヤーが何をしようとも、着地点「{ending}」の結末を迎えます。"
                         f"新たな障壁や展開を追加せず、必ずこのターンで締めくくること。"
                         f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
-                        f"{hook_clause}"
+                        f"{hook_clause}{_ENDING_GUARD}"
                     )
                 else:
                     injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「【エンディング】」とのみ出力してください。"
@@ -415,7 +415,7 @@ def _build_api_messages(h: list) -> list:
                     injection = (
                         f"着地点「{ending}」に向けて、物語をクロージングへ導いてください。"
                         f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
-                        f"{hook_clause}"
+                        f"{hook_clause}{_ENDING_GUARD}"
                     )
                 else:
                     injection = "物語をクロージングへ導いてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
@@ -566,6 +566,14 @@ def _is_turning_point_beat(beat: dict) -> bool:
     if t == "choice":
         return timing not in ("序盤", "中盤")
     return False
+
+
+_ENDING_GUARD = (
+    "今回のプレイヤーの行動に判定結果が付いている場合はそれに従い、失敗した行動を成功として描かないこと"
+    "（その場合、着地点は世界やNPCの側から実現させること）。"
+    "主人公を入力以上に動かしてよいのは着地点の情景を描く部分に限り、クライマックスの山場にあたる主人公の行動は"
+    "プレイヤーの入力にある範囲だけを描くこと。"
+)
 
 
 def _hook_closing_clause(plot: dict) -> str:
