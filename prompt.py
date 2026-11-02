@@ -185,7 +185,6 @@ climax・ending・ending_noteは必ず出力すること。省略・欠落・空
 - endingは、charactersの主要人物と場面を含む具体的な最後の場面として書くこと
 - hook.closing は ending と同じ場面・時間帯で、ending の場面の中の一瞬として書くこと。場所・人物の位置・姿勢を ending と揃える（例：ending で並んで座っているなら、hook.closing で立って見上げさせない）。ending と同じ物・人物について、ending と食い違う動作を書かない（例：ending で刀を地面に突き刺すなら、hook.closing で刀を鞘に収めない）
 - ending には着地点の情景だけを書く。「完全解決」「余韻を残す」「〜を受け入れる様子を描く」のような決着の度合い・演出意図・テーマの説明は ending に書かず、ending_note に書くこと
-- protagonist の人物は characters の先頭にも含めること
 
 【ジャンル固有の構造要素】
 - ジャンルに必要な構造要素を、既存のtwists・conflicts・ending・misconceptionsの中に自然に組み込むこと
