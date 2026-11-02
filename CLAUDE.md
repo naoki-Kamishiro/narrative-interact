@@ -953,6 +953,7 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - 目的：strongのエンディング誘導のターンで判定が失敗したケース（_ENDING_GUARD の判定失敗文を削除した影響の確認）を、バッチで狙って発生させる検証用オプション
 - `--dice N`（1〜20）：strongでビートキュー枯渇後（保留ターン以外）の判定だけ出目を N に固定（dice.forced_roll）。それ以外のターン・モードは通常のランダム。指定しなければ動作は従来どおり
 - 判定が発生するかは行動内容による（dice.judge がLLMで判定）。受動的な行動では判定自体が出ないことがある
+- `--ending-fail-only`：strongのエンディング誘導のターンで判定が失敗したセッションだけ、セッションログJSONを保存（save_session_json で判定。失敗は state の ending_dice_fails に出目・難易度とともに記録）。`--batch N --dice 1` と併用して、目的のケースのログだけを集める用途
 - VERSION はブランチ名（exp-dice-ending-option）。main へ取り込むときに戻す
 
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**

@@ -102,17 +102,33 @@ def _epilogue_api_messages(h: list) -> list:
     return msgs
 
 
-def _forced_ending_dice() -> int | None:
-    """--dice N 指定時、strongのエンディング誘導のターン（ビートキュー枯渇後・保留ターン以外）なら N を返す。"""
-    if FORCED_ENDING_DICE is None or not _is_strong():
-        return None
+def _is_strong_ending_turn() -> bool:
+    """strongのエンディング誘導のターン（ビートキュー枯渇後・保留ターン以外）か。"""
+    if not _is_strong():
+        return False
     s = state.get()
     queue = s.get("beat_queue", [])
     if not queue or s.get("choice_hold", False):
-        return None
-    if beat_mod.get_current_beat(queue, s.get("beat_ptr", 0)) is not None:
+        return False
+    return beat_mod.get_current_beat(queue, s.get("beat_ptr", 0)) is None
+
+
+def _forced_ending_dice() -> int | None:
+    """--dice N 指定時、strongのエンディング誘導のターンなら N を返す。"""
+    if FORCED_ENDING_DICE is None or not _is_strong_ending_turn():
         return None
     return FORCED_ENDING_DICE
+
+
+def _record_ending_dice_fail(dice_result: dict | None) -> None:
+    """strongのエンディング誘導のターンで判定が失敗したら state に記録する（--ending-fail-only の保存判定用）。"""
+    if not dice_result or dice_result.get("error") or dice_result.get("success", True):
+        return
+    if not _is_strong_ending_turn():
+        return
+    fails = list(state.get().get("ending_dice_fails", []))
+    fails.append({"dice": dice_result.get("dice"), "difficulty": dice_result.get("difficulty")})
+    state.update({"ending_dice_fails": fails})
 
 
 def _record_choice_action(h: list) -> None:
@@ -135,6 +151,8 @@ DEBUG_MODE: bool = False
 
 # 検証用の出目固定（--dice N で設定）。strongのエンディング誘導のターン（ビートキュー枯渇後）の判定だけ出目をNにする
 FORCED_ENDING_DICE: int | None = None
+# 検証用（--ending-fail-only）：strongのエンディング誘導のターンで判定が失敗したセッションだけログを保存する
+ENDING_FAIL_ONLY: bool = False
 
 # バッチ実行回数（--batch N で設定）
 BATCH_COUNT: int = 0  # 0=通常, N=N回バッチ実行
@@ -988,6 +1006,10 @@ def save_session_json(h: list, title: str, quiet: bool = False) -> None:
     """セッション全体をJSONで保存する。同一セッション中は同じファイルに上書きする。
     quiet=True のときは、保存先が決まった後の保存メッセージを出さない。"""
     global _session_log_path
+    if ENDING_FAIL_ONLY and not state.get().get("ending_dice_fails"):
+        if not quiet:
+            system_print("（--ending-fail-only：エンディング誘導のターンでの判定失敗がないため、ログは保存しません）")
+        return
     # Windows/Linux共通で問題になる文字を全て除去
     import re as _re
     import subprocess as _sp
@@ -1209,6 +1231,7 @@ def run_single_session(plot_mode: str) -> None:
         dice_mod.forced_roll = _forced_ending_dice()
         dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
         dice_mod.forced_roll = None
+        _record_ending_dice_fail(dice_result)
         if dice_result and dice_result.get("error"):
             error_print("ダイス判定に失敗しました。判定なしで続行します。")
             dice_result = None
@@ -1255,7 +1278,7 @@ def run_single_session(plot_mode: str) -> None:
 
 
 def main():
-    global AUTO_PLAY_MODE, DEBUG_MODE, BATCH_COUNT, FORCED_ENDING_DICE
+    global AUTO_PLAY_MODE, DEBUG_MODE, BATCH_COUNT, FORCED_ENDING_DICE, ENDING_FAIL_ONLY
     if "--help" in sys.argv or "-h" in sys.argv:
         print("使い方: python main.py [オプション]")
         print()
@@ -1265,6 +1288,7 @@ def main():
         print("  --batch N        N回バッチ実行（--normal または --deviate と併用）")
         print("  --debug          デバッグ出力を有効化（stderrに出力）")
         print("  --dice N         検証用：強拘束のエンディング誘導のターンの判定の出目をNに固定（1〜20）")
+        print("  --ending-fail-only 検証用：強拘束のエンディング誘導のターンで判定が失敗したセッションだけログを保存")
         print("  --help, -h       このヘルプを表示")
         sys.exit(0)
 
@@ -1284,6 +1308,9 @@ def main():
             print("--dice の後に1〜20の整数を指定してください。例: --dice 1")
             sys.exit(1)
         FORCED_ENDING_DICE = n
+
+    if "--ending-fail-only" in sys.argv:
+        ENDING_FAIL_ONLY = True
 
     # --batch N の解析
     if "--batch" in sys.argv:
@@ -1542,6 +1569,7 @@ def main():
         dice_mod.forced_roll = _forced_ending_dice()
         dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
         dice_mod.forced_roll = None
+        _record_ending_dice_fail(dice_result)
         if dice_result and dice_result.get("error"):
             error_print("ダイス判定に失敗しました（APIエラーまたはJSON解析失敗）。判定なしで続行します。")
             dice_result = None
