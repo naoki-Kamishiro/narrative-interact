@@ -905,6 +905,8 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - prompt.py（build_system_prompt）：hook.closing がある場合、ending_note.hook_resolution は「冒頭フックとの対応（参考）」として表示し「着地点の描写に含めること」を付けない。hook.closing が空のときは従来どおり「フック回収（着地点の描写に含めること）」（main.py の _hook_closing_clause の closing → hook_resolution の順と揃える）。strong / adaptive / off すべてのシステムプロンプトに影響
 - prompt.py（SYSTEM_PLOT）：hook.closing を「ending の場面の中の一瞬として書く。場所・人物の位置・姿勢を ending と揃える」に強化
 - main.py（EPILOGUE_PROMPT）：「プロットに記された喪失でも、本編で描写されていないものは使わないこと」を追加（全モード）
+- 段階1の結果（strong 1本・adaptive 1本・off 1本）：フック回収の表示は3/3で1本、プロットのフック回収と着地点の場所・姿勢のずれ 0/3（前回 3/5）、締めでのフック回収 3/3。エピローグで本編にない喪失を使った例 1/3（adaptive で「マイクの破損」をプロットから転記）
+- 段階2：エピローグ依頼文（_build_epilogue_prompt）で、plot.climax.loss があればその文字列を差し込み「プロットに記された喪失『…』は、本編で描写されている場合のみ使うこと」に置き換える（loss が無ければ段階1の一般文のまま）。名指しでかえって使わせるリスクあり、要確認
 - 見送り：山場・着地点が前提とする小道具の事前登場（所持品は曖昧にして物語の中で扱う方針と、手に取らない行動もありうるため）
 - VERSION はブランチ名（exp-plot-hook）。main へ取り込むときに戻す
 

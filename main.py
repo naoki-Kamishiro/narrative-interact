@@ -31,12 +31,13 @@ COMMANDS = {
 
 ENDING_MARKER = "【エンディング】"
 
+_EPILOGUE_UNSEEN_LOSS = "プロットに記された喪失でも、本編で描写されていないものは使わないこと。"
 EPILOGUE_PROMPT = (
     "エピローグを200字程度で書いてください。"
     "（これはエピローグ専用の依頼です。「【エンディング】以降の描写禁止」ルールはエピローグには適用されません。）"
     "本編で生じた代償・損失（負傷・失った力・犠牲等）と主要人物の状態（生死・関係の変化等）のうち、"
     "本編で明示されたものを1〜2点、具体的な描写で回収すること。"
-    "プロットに記された喪失でも、本編で描写されていないものは使わないこと。"
+    + _EPILOGUE_UNSEEN_LOSS +
     "新しい出来事は起こさず、意味・テーマ・変化の総括や説明もせず、"
     "具体的な動作・場所・物・人物の状態のみで描写して余韻を残すこと。"
     "「和解」「解放」「平穏」「救済」「変化」「重圧」「呪縛」「受容」「移ろう」「置き換わる」"
@@ -47,9 +48,17 @@ EPILOGUE_PROMPT = (
 def _build_epilogue_prompt() -> str:
     """エピローグ依頼文を組み立てる。
     strongで選択の局面を経た場合は、その選択の結果を回収対象に含めるよう指示を足す。"""
+    base = EPILOGUE_PROMPT
+    # プロットの喪失を名指しして、本編で描かれていない場合は使わせない（プロットごとに中身が変わる）
+    loss = ((state.get().get("plot") or {}).get("climax") or {}).get("loss", "")
+    if isinstance(loss, str) and loss.strip():
+        base = base.replace(
+            _EPILOGUE_UNSEEN_LOSS,
+            f"プロットに記された喪失「{loss.strip()}」は、本編で描写されている場合のみ使うこと。",
+        )
     choices = state.get().get("choice_log", [])
     if not choices:
-        return EPILOGUE_PROMPT
+        return base
     items = []
     for c in choices:
         if isinstance(c, str):  # 旧形式（選択内容のみ）
@@ -61,7 +70,7 @@ def _build_epilogue_prompt() -> str:
         items.append(item)
     listed = "／".join(items)
     return (
-        EPILOGUE_PROMPT
+        base
         + f"本編でプレイヤーが直面した選択と、その直後のプレイヤーの行動：{listed}。"
         "回収する1〜2点のうち少なくとも1点は、これらの行動の結果として本編で描写されたものから選ぶこと。"
     )
