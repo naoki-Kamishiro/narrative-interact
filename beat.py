@@ -141,6 +141,8 @@ def build_queue(plot: dict) -> list:
 
 
 _NO_LANDING_YET = "着地点の場面と冒頭フックの回収はまだ描写しないこと。"
+# 入力にない主人公の行動を注入文の近くで念押しする（システムプロンプトの同ルールは遠くて効きにくい）
+_NO_PROTAG_ACTION = "プレイヤーの入力にない主人公の行動・台詞・移動は書かないこと。"
 
 
 def make_injection(beat: dict) -> str:
@@ -160,7 +162,7 @@ def make_injection(beat: dict) -> str:
     else:
         text = tmpl.format(content=beat.get("content", ""))
     # ビート注入中は着地点・フック回収を先取りさせない（エンディング誘導で初めて描かせる）
-    return text + _NO_LANDING_YET
+    return text + _NO_PROTAG_ACTION + _NO_LANDING_YET
 
 
 def get_current_beat(queue: list, ptr: int) -> dict | None:
