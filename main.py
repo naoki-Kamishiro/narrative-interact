@@ -102,6 +102,19 @@ def _epilogue_api_messages(h: list) -> list:
     return msgs
 
 
+def _forced_ending_dice() -> int | None:
+    """--dice N 指定時、strongのエンディング誘導のターン（ビートキュー枯渇後・保留ターン以外）なら N を返す。"""
+    if FORCED_ENDING_DICE is None or not _is_strong():
+        return None
+    s = state.get()
+    queue = s.get("beat_queue", [])
+    if not queue or s.get("choice_hold", False):
+        return None
+    if beat_mod.get_current_beat(queue, s.get("beat_ptr", 0)) is not None:
+        return None
+    return FORCED_ENDING_DICE
+
+
 def _record_choice_action(h: list) -> None:
     """保留ターン（選択を迫った直後）のプレイヤー行動を choice_log の最後の選択に記録する。"""
     choice_log = list(state.get().get("choice_log", []))
@@ -119,6 +132,9 @@ AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸
 
 # デバッグモード（--debug引数で有効）
 DEBUG_MODE: bool = False
+
+# 検証用の出目固定（--dice N で設定）。strongのエンディング誘導のターン（ビートキュー枯渇後）の判定だけ出目をNにする
+FORCED_ENDING_DICE: int | None = None
 
 # バッチ実行回数（--batch N で設定）
 BATCH_COUNT: int = 0  # 0=通常, N=N回バッチ実行
@@ -1190,7 +1206,9 @@ def run_single_session(plot_mode: str) -> None:
             continue
 
         is_forced_ending = action.startswith("（物語を終わらせてください）")
+        dice_mod.forced_roll = _forced_ending_dice()
         dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
+        dice_mod.forced_roll = None
         if dice_result and dice_result.get("error"):
             error_print("ダイス判定に失敗しました。判定なしで続行します。")
             dice_result = None
@@ -1237,7 +1255,7 @@ def run_single_session(plot_mode: str) -> None:
 
 
 def main():
-    global AUTO_PLAY_MODE, DEBUG_MODE, BATCH_COUNT
+    global AUTO_PLAY_MODE, DEBUG_MODE, BATCH_COUNT, FORCED_ENDING_DICE
     if "--help" in sys.argv or "-h" in sys.argv:
         print("使い方: python main.py [オプション]")
         print()
@@ -1246,6 +1264,7 @@ def main():
         print("  --deviate        自動プレイ（逸脱）")
         print("  --batch N        N回バッチ実行（--normal または --deviate と併用）")
         print("  --debug          デバッグ出力を有効化（stderrに出力）")
+        print("  --dice N         検証用：強拘束のエンディング誘導のターンの判定の出目をNに固定（1〜20）")
         print("  --help, -h       このヘルプを表示")
         sys.exit(0)
 
@@ -1253,6 +1272,18 @@ def main():
         AUTO_PLAY_MODE = "normal"
     elif "--deviate" in sys.argv:
         AUTO_PLAY_MODE = "deviate"
+
+    # --dice N の解析（検証用）
+    if "--dice" in sys.argv:
+        idx = sys.argv.index("--dice")
+        try:
+            n = int(sys.argv[idx + 1])
+            if not 1 <= n <= 20:
+                raise ValueError
+        except (IndexError, ValueError):
+            print("--dice の後に1〜20の整数を指定してください。例: --dice 1")
+            sys.exit(1)
+        FORCED_ENDING_DICE = n
 
     # --batch N の解析
     if "--batch" in sys.argv:
@@ -1508,7 +1539,9 @@ def main():
 
         # ダイス判定（use_diceがTrueの場合のみ。システム強制終了アクションは除外）
         is_forced_ending = action.startswith("（物語を終わらせてください）")
+        dice_mod.forced_roll = _forced_ending_dice()
         dice_result = dice_mod.judge(action, h) if (state.get().get("use_dice", True) and not is_forced_ending) else None
+        dice_mod.forced_roll = None
         if dice_result and dice_result.get("error"):
             error_print("ダイス判定に失敗しました（APIエラーまたはJSON解析失敗）。判定なしで続行します。")
             dice_result = None

@@ -58,7 +58,12 @@ def set_difficulty_preset(preset: str) -> None:
     global _difficulty_offset
     _difficulty_offset = DIFFICULTY_PRESETS.get(preset, 0)
 
+# 検証用：設定されている間は出目をこの値に固定する（main.py の --dice N から、strongのエンディング誘導のターンだけ設定）
+forced_roll: int | None = None
+
 def roll_d20() -> int:
+    if forced_roll is not None:
+        return forced_roll
     return random.randint(1, 20)
 
 def _determine_intensity(dice: int, difficulty: int) -> str:
