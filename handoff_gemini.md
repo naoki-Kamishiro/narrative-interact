@@ -52,6 +52,10 @@ GMキャラクター機能・転換点描写強化の動作試験完了。
 - プロット生成の整合（strong / adaptive / off すべてに影響）：LLMが ending を dict で返したとき、フック回収・テーマ相当のキーを ending_note へ振り分け、ending には情景だけを残す。主人公が characters にいなければ先頭に追加。SYSTEM_PLOT に「hook.closing で ending と同じ物・人物に食い違う動作を書かない」「ending に決着の度合い・演出意図・テーマ説明を書かず ending_note に書く」「protagonist を characters の先頭にも含める」を追加
 - strongのエンディング誘導に「着地点の文言をそのまま書き写さず、その場の状況に合わせた場面として描写する」を追加
 - 検証（5本）：ending への注記混入 0/5、ending_note 記入 5/5、主人公の一覧掲載 5/5。着地点の丸写しは strong で一部改善
+- フック回収の指示を1本に：hook.closing があるときは ending_note.hook_resolution を「冒頭フックとの対応（参考）」として表示（closing が空なら従来どおりフック回収として表示）。SYSTEM_PLOT で hook.closing を ending の場面の中の一瞬として場所・位置・姿勢を揃えさせる
+- エピローグ依頼文で plot.climax.loss を名指しし「本編で描写されている場合のみ使う」（loss が無ければ一般文）
+- 効果の薄い・重複する指示を削除：strongのエンディング誘導の「着地点の文言を書き写さない」、SYSTEM_PLOT の「protagonist を characters の先頭に」（コードで補完）
+- 検証（5本）：フック回収と着地点のずれ 0/5、本編にない喪失のエピローグ使用 0/5
 
 ---
 
