@@ -890,6 +890,16 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - 残る現象：クライマックスで世界側の現象（空間の反転など）による場面転換、主人公名が役職名のときの「〇〇（主人公の名前）」プレースホルダー漏れ、着地点の文言の丸写し
 - 実験ブランチは取り込み後も削除せず残す
 
+**プロットの着地点とフック回収の整合（実験ブランチ experiment/plot-ending → 2026年11月2日に main へ取り込み・ユーザー承認済み）**
+- 目的：エンディングの質の土台となるプロット（着地点・フック回収）の整合と、着地点の文言の丸写し対策
+- 原因の特定：ending に「完全解決（…）」「（余韻を残す）」が混ざり ending_note が空になる例は、LLMが ending を dict で返し ending_note 相当を中に入れていたものを、10/31の正規化（dict の値を全部つなぐ）がそのまま連結していたため
+- plot.py：ending が dict の場合、キー名で振り分け（hook を含むキー → ending_note.hook_resolution、theme/closure/resolution/type/status/intent/nuance/note を含むキー → theme_closure、入れ子の ending_note も取り込む）、残りの値だけを ending にする。主人公が characters にいなければ先頭に追加（build_queue は主人公名を除外するのでビートは増えない）
+- prompt.py（SYSTEM_PLOT）：hook.closing で ending と同じ物・人物に食い違う動作を書かない、ending に決着の度合い・演出意図・テーマ説明を書かず ending_note に書く、protagonist を characters の先頭にも含める、を追加。プロットを使う strong / adaptive / off すべてに影響
+- main.py：strongのエンディング誘導（_ENDING_GUARD）に「着地点の文言をそのまま書き写さず、その場の状況に合わせた場面として描写する」を追加
+- 結果（strong 3本・adaptive 1本・off 1本）：ending への注記混入 0/5、ending_note 記入 5/5、主人公が characters に含まれる 5/5。フック回収と着地点の食い違いは軽微なものが残る（立つ／座る、広場／室内、祭壇／地面など場所・姿勢のずれ）。strongの着地点の丸写しは一部改善（1本良好・1本丸写し・1本は締めの1文だけ転記）、adaptive/off はガード対象外のため丸写しが継続
+- 残課題：山場・着地点が前提とする小道具（例：「手にした古い鐘」）が本編に登場せずGMが突然出す、ending_note.hook_resolution が hook.closing と並んで「フック回収」が2本になる・説明文になる、フック回収と着地点の場所のずれ、strongのエンディング誘導で山場の代行が1件再発（ガード導入後6本中1本）
+- 実験ブランチは取り込み後も削除せず残す
+
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**
 - `--debug` の手動プレイでは、GM応答のたびに（開始シーン・通常ターン・/retry・/load 後）セッションログJSONを上書き保存する（`_autosave_debug_log`）。/quit や異常終了でもそこまでのログが残る
 - 保存先は1セッション中固定（`_session_log_path`）。新規開始・ロード・バッチの各回でリセット。エンディング時の保存も同じファイルに上書きされる

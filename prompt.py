@@ -183,7 +183,9 @@ climax・ending・ending_noteは必ず出力すること。省略・欠落・空
 - choicesは出来事ではなく、主人公の判断を待つ「局面」として書くこと。主人公がどちらを選んだか、選んだ結果どうなったかは書かない。選択肢は主人公自身の行動で表し、他の人物や世界の側の出来事にしない
 - charactersに主人公以外の主要人物がいる場合、その人物が物語に登場し主人公と関わる出来事を、反転または選択の少なくとも1つに含めること
 - endingは、charactersの主要人物と場面を含む具体的な最後の場面として書くこと
-- hook.closing は ending と同じ場面・時間帯で書くこと
+- hook.closing は ending と同じ場面・時間帯で書くこと。ending と同じ物・人物について、ending と食い違う動作を書かない（例：ending で刀を地面に突き刺すなら、hook.closing で刀を鞘に収めない）
+- ending には着地点の情景だけを書く。「完全解決」「余韻を残す」「〜を受け入れる様子を描く」のような決着の度合い・演出意図・テーマの説明は ending に書かず、ending_note に書くこと
+- protagonist の人物は characters の先頭にも含めること
 
 【ジャンル固有の構造要素】
 - ジャンルに必要な構造要素を、既存のtwists・conflicts・ending・misconceptionsの中に自然に組み込むこと
