@@ -49,13 +49,34 @@ def _build_epilogue_prompt() -> str:
     choices = state.get().get("choice_log", [])
     if not choices:
         return EPILOGUE_PROMPT
-    listed = "／".join(f"「{c}」" for c in choices)
+    items = []
+    for c in choices:
+        if isinstance(c, str):  # 旧形式（選択内容のみ）
+            items.append(f"選択「{c}」")
+            continue
+        item = f"選択「{c.get('choice', '')}」"
+        if c.get("action"):
+            item += f"→プレイヤーの行動「{c['action']}」"
+        items.append(item)
+    listed = "／".join(items)
     return (
         EPILOGUE_PROMPT
-        + f"本編でプレイヤーが直面した選択：{listed}。"
-        "回収する1〜2点のうち少なくとも1点は、これらの選択でプレイヤーが取った行動の結果から選ぶこと"
-        "（本編で描写された結果に限る）。"
+        + f"本編でプレイヤーが直面した選択と、その直後のプレイヤーの行動：{listed}。"
+        "回収する1〜2点のうち少なくとも1点は、これらの行動の結果として本編で描写されたものから選ぶこと。"
     )
+
+
+def _record_choice_action(h: list) -> None:
+    """保留ターン（選択を迫った直後）のプレイヤー行動を choice_log の最後の選択に記録する。"""
+    choice_log = list(state.get().get("choice_log", []))
+    if not choice_log or not isinstance(choice_log[-1], dict):
+        return
+    user_msgs = [m["content"] for m in h if m["role"] == "user"]
+    if len(user_msgs) < 2:
+        return
+    action = user_msgs[-1].split("\n")[0].strip()
+    choice_log[-1] = dict(choice_log[-1], action=action)
+    state.update({"choice_log": choice_log})
 
 # 自動プレイモード（起動引数で設定）
 AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸脱
@@ -322,6 +343,7 @@ def _build_api_messages(h: list) -> list:
         if s.get("choice_hold", False):
             # 選択ビート直後の保留ターン：次のビートは注入せず、選択への応答の結果を描かせる
             msgs = [dict(m) for m in hist.build_for_api(h)]
+            _record_choice_action(h)
             injection = (
                 "直前の場面でプレイヤーに選択を迫った。このターンはプレイヤーの行動をその選択への応答として扱い、"
                 "その結果を描写すること。プレイヤーの行動がどちらの選択にも明確に当たらない場合は、主人公がどちらかを選んだ・決意したとは描写せず、選ばなかったことの結果（時間の経過、NPCや状況が先に動く等）として描写すること。"
@@ -585,7 +607,7 @@ def _after_reply(reply: str) -> None:
         if _is_strong() and advanced and 0 < ptr <= len(queue) and queue[ptr - 1].get("type") == "choice":
             # エピローグで選択の結果を回収させるため、提示した選択を記録する
             choice_log = list(state.get().get("choice_log", []))
-            choice_log.append(queue[ptr - 1].get("content", ""))
+            choice_log.append({"choice": queue[ptr - 1].get("content", ""), "action": ""})
             state.update({"choice_hold": True, "choice_log": choice_log})
             if DEBUG_MODE:
                 print("[BEAT] choice hold set", file=sys.stderr)

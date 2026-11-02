@@ -140,6 +140,9 @@ def build_queue(plot: dict) -> list:
     return queue
 
 
+_NO_LANDING_YET = "着地点の場面と冒頭フックの回収はまだ描写しないこと。"
+
+
 def make_injection(beat: dict) -> str:
     """ビートから注入文を生成する。"""
     # adaptive beat は独自の injection 文を持つ
@@ -148,14 +151,16 @@ def make_injection(beat: dict) -> str:
     t = beat["type"]
     tmpl = _TEMPLATES.get(t, "")
     if t == "character":
-        return tmpl.format(name=beat.get("name", ""))
+        text = tmpl.format(name=beat.get("name", ""))
     elif t == "choice":
-        return tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
+        text = tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
     elif t == "climax":
-        return tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
+        text = tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
                            peak=beat.get("peak", ""))
     else:
-        return tmpl.format(content=beat.get("content", ""))
+        text = tmpl.format(content=beat.get("content", ""))
+    # ビート注入中は着地点・フック回収を先取りさせない（エンディング誘導で初めて描かせる）
+    return text + _NO_LANDING_YET
 
 
 def get_current_beat(queue: list, ptr: int) -> dict | None:
