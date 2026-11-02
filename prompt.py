@@ -375,7 +375,11 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append(f"- フック回収: {hook['closing']}（着地点の描写に含めること）")
 
         if ending:
-            lines.append(f"- 着地点（情景のみ。動機・感情・テーマ語は含めない）: {ending}")
+            if _beat_injection_mode:
+                lines.append(f"- 着地点（情景のみ。動機・感情・テーマ語は含めない）: {ending}")
+            else:
+                # off/adaptive ではプロットは参考扱い。未登場の人物・離れた場所を着地点に合わせて連れてこさせない
+                lines.append(f"- 着地点の目安（情景のみ。動機・感情・テーマ語は含めない。物語の展開に合わせて場面・人物を変えてよい）: {ending}")
 
         if not _beat_injection_mode:
             choices = plot.get("choices", [])
