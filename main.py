@@ -76,6 +76,32 @@ def _build_epilogue_prompt() -> str:
     )
 
 
+_EPILOGUE_DROP_PREFIXES = ("- フック回収:", "- 着地点（", "- 着地点の目安")
+_EPILOGUE_DROP_SECTIONS = ("【クライマックス】", "【末尾の回収と余韻】")
+
+
+def _epilogue_api_messages(h: list) -> list:
+    """エピローグ用のAPIメッセージ。システムプロンプトから着地点・フック回収・クライマックスを除き、
+    本編で実際に描かれた結果ではなくプロットの着地点どおりに書き直すのを防ぐ（保存する履歴は変えない）。"""
+    msgs = [dict(m) for m in hist.build_for_api(h)]
+    if not msgs or msgs[0].get("role") != "system":
+        return msgs
+    out, skipping = [], False
+    for line in msgs[0]["content"].split("\n"):
+        if line.strip() in _EPILOGUE_DROP_SECTIONS:
+            skipping = True
+            continue
+        if skipping:
+            if line.startswith("- "):
+                continue
+            skipping = False
+        if line.startswith(_EPILOGUE_DROP_PREFIXES):
+            continue
+        out.append(line)
+    msgs[0]["content"] = "\n".join(out)
+    return msgs
+
+
 def _record_choice_action(h: list) -> None:
     """保留ターン（選択を迫った直後）のプレイヤー行動を choice_log の最後の選択に記録する。"""
     choice_log = list(state.get().get("choice_log", []))
@@ -992,7 +1018,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
         state.update({"end_reason": end_reason})
         # 自動プレイ時はエピローグを自動生成して終了
         h = hist.add_user(h, _build_epilogue_prompt())
-        reply = call_gm(hist.build_for_api(h))
+        reply = call_gm(_epilogue_api_messages(h))
         if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
             error_print("エピローグの生成に失敗しました。")
             h.pop()
@@ -1007,7 +1033,7 @@ def handle_ending(h: list) -> tuple[list, bool]:
             return h, True
         if ans == "2":
             h = hist.add_user(h, _build_epilogue_prompt())
-            reply = call_gm(hist.build_for_api(h))
+            reply = call_gm(_epilogue_api_messages(h))
             if reply.startswith("[ERROR") or reply == "[CONTEXT_LIMIT]":
                 error_print("エピローグの生成に失敗しました。")
                 h.pop()
