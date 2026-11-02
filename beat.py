@@ -36,7 +36,7 @@ _TEMPLATES = {
     "failure":       "今回の描写で、現在いる場所で{content}という状況を発生させること。プレイヤーの行動とは別に世界の側から引き起こすこと。内容が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果として描写すること。",
     "choice":        "今回の描写で、{content}という局面をプレイヤーが直面する形で描写すること。選択を迫ること。代償は{cost}。",
     "twist":         "今回の描写で、{content}という出来事を世界の側から発生させること。プレイヤーが関係する行動をとらなくても起こすこと。内容が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果として描写すること。事実はNPCが台詞で言ってよいが、その事実が主人公にとって何を意味するかはNPCも地の文も言わないこと。",
-    "character":     "{name}が現在地へ現れ、プレイヤーと接触すること。",
+    "character":     "{name}が現在地へ現れ、プレイヤーと接触すること。本文中で「{name}」という呼び名を明記すること。",
     # クライマックスビート（キューの最後に1つだけ追加）
     "climax":        "今回の描写で、クライマックスの場面を描くこと。舞台は{setting}。現在地が舞台と異なる場合は、無理に場所を移さず、現在地から舞台につながる形で場面を進めてよい。場面の再構成や処理内容の説明は書かないこと。対立は{conflict_type}。山場は「{peak}」。山場が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果を描写すること。このターンでは物語を完結させず、【エンディング】は出力しないこと。",
 }
@@ -140,6 +140,11 @@ def build_queue(plot: dict) -> list:
     return queue
 
 
+_NO_LANDING_YET = "着地点の場面と冒頭フックの回収はまだ描写しないこと。"
+# 入力にない主人公の行動を注入文の近くで念押しする（システムプロンプトの同ルールは遠くて効きにくい）
+_NO_PROTAG_ACTION = "プレイヤーの入力にない主人公の行動・台詞・移動は書かないこと。"
+
+
 def make_injection(beat: dict) -> str:
     """ビートから注入文を生成する。"""
     # adaptive beat は独自の injection 文を持つ
@@ -148,14 +153,16 @@ def make_injection(beat: dict) -> str:
     t = beat["type"]
     tmpl = _TEMPLATES.get(t, "")
     if t == "character":
-        return tmpl.format(name=beat.get("name", ""))
+        text = tmpl.format(name=beat.get("name", ""))
     elif t == "choice":
-        return tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
+        text = tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
     elif t == "climax":
-        return tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
+        text = tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
                            peak=beat.get("peak", ""))
     else:
-        return tmpl.format(content=beat.get("content", ""))
+        text = tmpl.format(content=beat.get("content", ""))
+    # ビート注入中は着地点・フック回収を先取りさせない（エンディング誘導で初めて描かせる）
+    return text + _NO_PROTAG_ACTION + _NO_LANDING_YET
 
 
 def get_current_beat(queue: list, ptr: int) -> dict | None:
