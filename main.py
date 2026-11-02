@@ -35,8 +35,8 @@ _EPILOGUE_UNSEEN_LOSS = "プロットに記された喪失でも、本編で描�
 EPILOGUE_PROMPT = (
     "エピローグを200字程度で書いてください。"
     "（これはエピローグ専用の依頼です。「【エンディング】以降の描写禁止」ルールはエピローグには適用されません。）"
-    "本編で生じた代償・損失（負傷・失った力・犠牲等）と主要人物の状態（生死・関係の変化等）のうち、"
-    "本編で明示されたものを1〜2点、具体的な描写で回収すること。"
+    "本編で明示された代償・損失や主要人物の状態（生死・関係の変化等）を1〜2点、具体的な描写で回収すること。"
+    "本編で損失が描かれていなければ、主要人物の状態だけでよい。"
     + _EPILOGUE_UNSEEN_LOSS +
     "新しい出来事は起こさず、意味・テーマ・変化の総括や説明もせず、"
     "具体的な動作・場所・物・人物の状態のみで描写して余韻を残すこと。"
@@ -355,8 +355,8 @@ def _build_api_messages(h: list) -> list:
             msgs = [dict(m) for m in hist.build_for_api(h)]
             _record_choice_action(h)
             injection = (
-                "直前の場面でプレイヤーに選択を迫った。このターンはプレイヤーの行動をその選択への応答として扱い、"
-                "その結果を描写すること。プレイヤーの行動がどちらの選択にも明確に当たらない場合は、主人公がどちらかを選んだ・決意したとは描写せず、選ばなかったことの結果（時間の経過、NPCや状況が先に動く等）として描写すること。"
+                "直前の場面でプレイヤーに選択を迫った。このターンはプレイヤーの行動の結果を描写すること。"
+                "行動がどちらかの選択に明確に当たる場合はその選択の結果として描き、当たらない場合は、主人公がどちらかを選んだ・決意したとは描写せず、選ばなかったことの結果（時間の経過、NPCや状況が先に動く等）として描写すること。"
                 "新たなプロット上の出来事は起こさないこと。"
                 "プレイヤーの入力にない主人公の行動・台詞・移動は書かないこと。"
                 "このターンでは物語を完結させず、【エンディング】は出力しないこと。着地点の場面は描写しないこと。"
@@ -376,13 +376,12 @@ def _build_api_messages(h: list) -> list:
         queue_exhausted = queue and beat_mod.get_current_beat(queue, ptr) is None
         if not debug and queue_exhausted and not s.get("ending_prompted", False):
             plot = s.get("plot", {})
-            climax_setting = plot.get("climax", {}).get("setting", "")
             ending = plot.get("ending", "")
             hook_clause = _hook_closing_clause(plot)
-            if climax_setting and ending:
+            if ending:
                 injection = (
                     f"全てのプロット要素が出揃いました。"
-                    f"クライマックスの舞台「{climax_setting}」と着地点「{ending}」に向けて、"
+                    f"着地点「{ending}」に向けて、"
                     f"プレイヤーの行動に応じて物語を一歩進めてください。"
                     f"物語が自然に完結した場合は、最後の1行に「【エンディング】」とのみ出力すること。"
                     f"{hook_clause}{_ENDING_GUARD}"
@@ -404,15 +403,14 @@ def _build_api_messages(h: list) -> list:
             post_count += 1
             state.update({"post_prompt_count": post_count})
             plot = s.get("plot", {})
-            climax_setting = plot.get("climax", {}).get("setting", "")
             ending = plot.get("ending", "")
             hook_clause = _hook_closing_clause(plot)
             if post_count >= 2:
                 # 2ターン目以降は強制モード
-                if climax_setting and ending:
+                if ending:
                     injection = (
                         f"【必須】このターンで物語を完結させてください。"
-                        f"プレイヤーが何をしようとも、着地点「{ending}」の結末を迎えます。"
+                        f"着地点「{ending}」の結末へ向かうこと。"
                         f"新たな障壁や展開を追加せず、必ずこのターンで締めくくること。"
                         f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
                         f"{hook_clause}{_ENDING_GUARD}"
@@ -421,7 +419,7 @@ def _build_api_messages(h: list) -> list:
                     injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「【エンディング】」とのみ出力してください。"
             else:
                 # 1ターン目は緩めの再促進
-                if climax_setting and ending:
+                if ending:
                     injection = (
                         f"着地点「{ending}」に向けて、物語をクロージングへ導いてください。"
                         f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
@@ -579,8 +577,6 @@ def _is_turning_point_beat(beat: dict) -> bool:
 
 
 _ENDING_GUARD = (
-    "今回のプレイヤーの行動に判定結果が付いている場合はそれに従い、失敗した行動を成功として描かないこと"
-    "（その場合、着地点は世界やNPCの側から実現させること）。"
     "主人公を入力以上に動かしてよいのは着地点の情景を描く部分に限り、クライマックスの山場にあたる主人公の行動は"
     "プレイヤーの入力にある範囲だけを描くこと。"
 )
