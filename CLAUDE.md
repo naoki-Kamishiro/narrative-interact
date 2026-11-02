@@ -890,6 +890,14 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - 残る現象：クライマックスで世界側の現象（空間の反転など）による場面転換、主人公名が役職名のときの「〇〇（主人公の名前）」プレースホルダー漏れ、着地点の文言の丸写し
 - 実験ブランチは取り込み後も削除せず残す
 
+**実験ブランチ experiment/plot-ending（本流 main には未反映・2026年11月2日〜）**
+- 目的：エンディングの質の土台となるプロット（着地点・フック回収）の整合と、着地点の文言の丸写し対策
+- 原因の特定：ending に「完全解決（…）」「（余韻を残す）」が混ざり ending_note が空になる例は、LLMが ending を dict で返し ending_note 相当を中に入れていたものを、10/31の正規化（dict の値を全部つなぐ）がそのまま連結していたため
+- plot.py：ending が dict の場合、キー名で振り分け（hook を含むキー → ending_note.hook_resolution、theme/closure/resolution/type/status/intent/nuance/note を含むキー → theme_closure、入れ子の ending_note も取り込む）、残りの値だけを ending にする。主人公が characters にいなければ先頭に追加（build_queue は主人公名を除外するのでビートは増えない）
+- prompt.py（SYSTEM_PLOT）：hook.closing で ending と同じ物・人物に食い違う動作を書かない、ending に決着の度合い・演出意図・テーマ説明を書かず ending_note に書く、protagonist を characters の先頭にも含める、を追加。プロットを使う strong / adaptive / off すべてに影響
+- main.py：strongのエンディング誘導（_ENDING_GUARD）に「着地点の文言をそのまま書き写さず、その場の状況に合わせた場面として描写する」を追加
+- VERSION はブランチ名（exp-plot-ending）。main へ取り込むときに戻す
+
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**
 - `--debug` の手動プレイでは、GM応答のたびに（開始シーン・通常ターン・/retry・/load 後）セッションログJSONを上書き保存する（`_autosave_debug_log`）。/quit や異常終了でもそこまでのログが残る
 - 保存先は1セッション中固定（`_session_log_path`）。新規開始・ロード・バッチの各回でリセット。エンディング時の保存も同じファイルに上書きされる

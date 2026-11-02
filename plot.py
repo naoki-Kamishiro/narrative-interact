@@ -159,12 +159,38 @@ def _validate_and_repair(plot: dict) -> dict:
             print("[plot修復] climax が空だったため他フィールドから補完しました", file=sys.stderr)
     # ending が dict / list で返った場合は文字列に正規化する
     # （そのままだと GMへのプロンプトに {'scene_description': ...} のような表記が入る）
+    # dict の中に ending_note 相当（フック回収・テーマの決着）が混ざっている場合は ending_note へ振り分け、
+    # 着地点の情景だけを ending に残す（混ざったままだと「完全解決（…）」「余韻を残す」が着地点に入る）
     ending = plot.get("ending")
     if isinstance(ending, dict):
-        vals = [str(v).strip() for v in ending.values() if isinstance(v, (str, int, float)) and str(v).strip()]
-        plot["ending"] = " ".join(vals)
+        note = plot.get("ending_note") if isinstance(plot.get("ending_note"), dict) else {}
+        note = dict(note)
+        scene_vals = []
+        for k, v in ending.items():
+            key = str(k).lower()
+            if isinstance(v, dict) and ("note" in key or "hook" in v or "hook_resolution" in v or "theme_closure" in v):
+                for nk, nv in v.items():
+                    if nk in ("hook_resolution", "theme_closure") and isinstance(nv, str) and not note.get(nk):
+                        note[nk] = nv.strip()
+                continue
+            if not isinstance(v, (str, int, float)) or not str(v).strip():
+                continue
+            if "hook" in key:
+                note.setdefault("hook_resolution", "")
+                if not note["hook_resolution"]:
+                    note["hook_resolution"] = str(v).strip()
+                continue
+            if any(w in key for w in ("theme", "closure", "resolution", "type", "status", "intent", "nuance", "note")):
+                note.setdefault("theme_closure", "")
+                if not note["theme_closure"]:
+                    note["theme_closure"] = str(v).strip()
+                continue
+            scene_vals.append(str(v).strip())
+        plot["ending"] = " ".join(scene_vals)
+        if note:
+            plot["ending_note"] = {"hook_resolution": note.get("hook_resolution", ""), "theme_closure": note.get("theme_closure", "")}
         if DEBUG_MODE:
-            print("[plot修復] ending が dict だったため文字列に変換しました", file=sys.stderr)
+            print("[plot修復] ending が dict だったため情景を文字列に、注記を ending_note に振り分けました", file=sys.stderr)
     elif isinstance(ending, list):
         plot["ending"] = " ".join(str(v).strip() for v in ending if isinstance(v, (str, int, float)) and str(v).strip())
         if DEBUG_MODE:
@@ -173,6 +199,14 @@ def _validate_and_repair(plot: dict) -> dict:
         plot["ending"] = ""
         if DEBUG_MODE:
             print("[plot修復] ending が欠落していたためデフォルト補完しました", file=sys.stderr)
+    # 主人公が characters に含まれていない場合は先頭に追加する（GMに渡す登場人物一覧から主人公が抜けないように）
+    prot_name = plot.get("protagonist", {}).get("name", "") if isinstance(plot.get("protagonist"), dict) else ""
+    if prot_name and isinstance(plot.get("characters"), list):
+        if not any(isinstance(c, dict) and c.get("name") == prot_name for c in plot["characters"]):
+            role = plot["protagonist"].get("goal_surface", "") or "主人公"
+            plot["characters"].insert(0, {"name": prot_name, "role": role})
+            if DEBUG_MODE:
+                print("[plot修復] 主人公が characters に無かったため追加しました", file=sys.stderr)
     if not isinstance(plot.get("ending_note"), dict) or not plot["ending_note"]:
         plot["ending_note"] = {"hook_resolution": "", "theme_closure": ""}
         if DEBUG_MODE:
