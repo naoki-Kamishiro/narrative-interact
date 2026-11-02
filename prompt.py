@@ -183,7 +183,7 @@ climax・ending・ending_noteは必ず出力すること。省略・欠落・空
 - choicesは出来事ではなく、主人公の判断を待つ「局面」として書くこと。主人公がどちらを選んだか、選んだ結果どうなったかは書かない。選択肢は主人公自身の行動で表し、他の人物や世界の側の出来事にしない
 - charactersに主人公以外の主要人物がいる場合、その人物が物語に登場し主人公と関わる出来事を、反転または選択の少なくとも1つに含めること
 - endingは、charactersの主要人物と場面を含む具体的な最後の場面として書くこと
-- hook.closing は ending と同じ場面・時間帯で書くこと。ending と同じ物・人物について、ending と食い違う動作を書かない（例：ending で刀を地面に突き刺すなら、hook.closing で刀を鞘に収めない）
+- hook.closing は ending と同じ場面・時間帯で、ending の場面の中の一瞬として書くこと。場所・人物の位置・姿勢を ending と揃える（例：ending で並んで座っているなら、hook.closing で立って見上げさせない）。ending と同じ物・人物について、ending と食い違う動作を書かない（例：ending で刀を地面に突き刺すなら、hook.closing で刀を鞘に収めない）
 - ending には着地点の情景だけを書く。「完全解決」「余韻を残す」「〜を受け入れる様子を描く」のような決着の度合い・演出意図・テーマの説明は ending に書かず、ending_note に書くこと
 - protagonist の人物は characters の先頭にも含めること
 
@@ -488,7 +488,11 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
             lines.append("")
             lines.append("【末尾の回収と余韻】")
             if ending_note.get("hook_resolution"):
-                lines.append(f"- フック回収: {ending_note['hook_resolution']}（着地点の描写に含めること）")
+                if hook.get("closing"):
+                    # フック回収は hook.closing の1本に絞る（2本並ぶと小さいモデルは片方しか拾えない）
+                    lines.append(f"- 冒頭フックとの対応（参考）: {ending_note['hook_resolution']}")
+                else:
+                    lines.append(f"- フック回収: {ending_note['hook_resolution']}（着地点の描写に含めること）")
             # theme_closure は内面・抽象語を含むためGMには渡さない
 
     return "\n".join(lines)

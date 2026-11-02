@@ -900,6 +900,14 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - 残課題：山場・着地点が前提とする小道具（例：「手にした古い鐘」）が本編に登場せずGMが突然出す、ending_note.hook_resolution が hook.closing と並んで「フック回収」が2本になる・説明文になる、フック回収と着地点の場所のずれ、strongのエンディング誘導で山場の代行が1件再発（ガード導入後6本中1本）
 - 実験ブランチは取り込み後も削除せず残す
 
+**実験ブランチ experiment/plot-hook（本流 main には未反映・2026年11月2日〜）**
+- 目的：フック回収の指示を1本に絞る、フック回収と着地点の場所・姿勢のずれを減らす、エピローグでプロット上だけの喪失を使わせない
+- prompt.py（build_system_prompt）：hook.closing がある場合、ending_note.hook_resolution は「冒頭フックとの対応（参考）」として表示し「着地点の描写に含めること」を付けない。hook.closing が空のときは従来どおり「フック回収（着地点の描写に含めること）」（main.py の _hook_closing_clause の closing → hook_resolution の順と揃える）。strong / adaptive / off すべてのシステムプロンプトに影響
+- prompt.py（SYSTEM_PLOT）：hook.closing を「ending の場面の中の一瞬として書く。場所・人物の位置・姿勢を ending と揃える」に強化
+- main.py（EPILOGUE_PROMPT）：「プロットに記された喪失でも、本編で描写されていないものは使わないこと」を追加（全モード）
+- 見送り：山場・着地点が前提とする小道具の事前登場（所持品は曖昧にして物語の中で扱う方針と、手に取らない行動もありうるため）
+- VERSION はブランチ名（exp-plot-hook）。main へ取り込むときに戻す
+
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**
 - `--debug` の手動プレイでは、GM応答のたびに（開始シーン・通常ターン・/retry・/load 後）セッションログJSONを上書き保存する（`_autosave_debug_log`）。/quit や異常終了でもそこまでのログが残る
 - 保存先は1セッション中固定（`_session_log_path`）。新規開始・ロード・バッチの各回でリセット。エンディング時の保存も同じファイルに上書きされる
