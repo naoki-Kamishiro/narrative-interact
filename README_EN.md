@@ -189,7 +189,7 @@ These may improve with a more capable model.
 - **Sinking into a single moment**: Keeps digging into the same scene, and the story stops moving
 - **NPCs explaining or judging**: NPCs explain the meaning of the protagonist's actions or praise their decisions
 - **Premature endings**: Ends the story on everyday narration such as "went home"
-- **Resolving costs that never happened**: Adds injuries or losses in the epilogue that never occurred in the story, or rewrites the epilogue to match the plot's landing point instead of how the story actually ended
+- **Resolving costs that never happened**: Adds injuries or losses in the epilogue that never occurred in the story, or rewrites the epilogue to match the plot's landing point instead of how the story actually ended, or adds new events in the epilogue aimed at the plot's goal
 - **Skipping the hook closing**: The closing of the opening hook (hook.closing) is not narrated in the ending
 - **Forced jumps to the landing point**: In free and adaptive modes, abruptly brings in characters who never appeared or distant places to match the landing point
 
@@ -208,7 +208,7 @@ These may improve with a more capable model.
 - **Adding new settings first**: Adds new settings, threats, or characters instead of deriving results from what is already established
 - **Uniformly large outcomes**: Triggers story-shaking developments regardless of how strong the roll was
 - **Ignoring genre constraints**: Creates hostile developments even in genres where combat is disabled, often triggered by a severe failure
-- **Epilogue contradicting the story**: Occasionally narrates the opposite of the player's choice, or a plot loss that never appeared in the story, in the epilogue
+- **Epilogue contradicting the story**: Occasionally narrates the opposite of the player's choice, or a plot loss that never appeared in the story, in the epilogue (showing a later moment as the outcome of something already set in motion in the story is by design)
 - **Rewriting the player's input**: Narrates a different action from the one entered, to make things fit
 - **Plot labels leaking**: Labels from the plot (such as "the third party") may appear in the text
 - **Addressing the protagonist**: The narration sometimes refers to the protagonist as "you"
