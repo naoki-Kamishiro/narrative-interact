@@ -184,27 +184,34 @@ These may improve with a more capable model.
 **Mitigation implemented (still occurs probabilistically)**
 
 - **Ending every turn with a question**: Closes turns with "What do you do?"
-- **Bulleted choices**: Lists options such as "A. Run B. Fight"
+- **Bulleted choices**: Lists options such as "A. Run B. Fight" (in a choice scene, the GM or an NPC presenting two options within dialogue or narration is intended, as TRPG-style progression)
 - **Ignoring dice results**: Narrates a failure as an effective success, or nullifies a success right after
 - **Sinking into a single moment**: Keeps digging into the same scene, and the story stops moving
 - **NPCs explaining or judging**: NPCs explain the meaning of the protagonist's actions or praise their decisions
 - **Premature endings**: Ends the story on everyday narration such as "went home"
+- **Resolving costs that never happened**: Adds injuries or losses in the epilogue that never occurred in the story, or rewrites the epilogue to match the plot's landing point instead of how the story actually ended
+- **Skipping the hook closing**: The closing of the opening hook (hook.closing) is not narrated in the ending
+- **Forced jumps to the landing point**: In free and adaptive modes, abruptly brings in characters who never appeared or distant places to match the landing point
 
 **Remaining constraints (still occur at some frequency after mitigation)**
 
 - **Meaning in the narration**: Inner life or interpretation such as "resolve hardens" or "this means X" creeps in. More common late in the story and at the climax
 - **Anticipating the landing point**: Uses motive or theme words from the plot's ending before the ending. Common in mystery
 - **Exceeding the length guideline**: Ignores the 300-character-per-turn guideline, sometimes by a lot depending on genre
+- **Copying the landing point**: Copies the plot's landing-point text almost verbatim at the close of the ending
+- **Location jumps at the climax**: In strong mode, jumps abruptly from the current location to the climax setting ("the scenery rewrites itself")
+- **Acting out the peak**: In strong mode, on an ending-induction turn, the GM writes the protagonist's peak action that is not in the input
+- **Reading intent into the hold turn**: In strong mode, on the turn after a choice is posed, interprets the action as "a sign of resolve" in narration or NPC dialogue
 
 **Model-dependent (full resolution depends on the model's ability)**
 
 - **Adding new settings first**: Adds new settings, threats, or characters instead of deriving results from what is already established
 - **Uniformly large outcomes**: Triggers story-shaking developments regardless of how strong the roll was
 - **Ignoring genre constraints**: Creates hostile developments even in genres where combat is disabled, often triggered by a severe failure
-- **Resolving costs that never happened**: Treats plot costs that never occurred in the story as established facts in the epilogue
+- **Epilogue contradicting the story**: Occasionally narrates the opposite of the player's choice, or a plot loss that never appeared in the story, in the epilogue
 - **Rewriting the player's input**: Narrates a different action from the one entered, to make things fit
-- **Skipping the hook closing**: The closing of the opening hook (hook.closing) is sometimes not narrated in the ending
-- **Forced jumps to the landing point**: Abruptly switches location or scene right before the ending to match the plot's landing point. Labels from the plot (such as "the third party") may appear in the text
+- **Plot labels leaking**: Labels from the plot (such as "the third party") may appear in the text
+- **Addressing the protagonist**: The narration sometimes refers to the protagonist as "you"
 
 ---
 
