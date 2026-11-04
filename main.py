@@ -662,8 +662,7 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
 
     if dice_result["success"] and intensity == "decisive":
         inst = (
-            "決定的な成功として描写すること。"
-            "行動の目的を大きく前進させる具体的な結果を示す。"
+            "成功として、この行動の目的を十分に達成した具体的な結果を描写すること。"
             "成功を無効化・矮小化しない。"
         )
     elif dice_result["success"]:
@@ -673,7 +672,7 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
         )
     elif intensity == "severe":
         inst = (
-            "重大な失敗として描写すること。目的は達成できない。"
+            "明確な失敗として描写すること。目的は達成できない。"
             "次の行動で対処可能な小規模な障害を最大1つ発生させる。"
             "失敗を成功に近い描写にしてはならない。"
         )
