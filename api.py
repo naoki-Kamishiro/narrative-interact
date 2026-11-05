@@ -196,7 +196,22 @@ def generate_genre_title(genre: str = "") -> dict:
         m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
         if m:
             return _json.loads(m.group())
-        return {"error": f"JSON not found in response: {raw}"}
+        output = response.get("output", [])
+        stats = response.get("stats", {})
+        output_summary = [
+            {
+                "type": item.get("type"),
+                "content_length": len(item.get("content", "")) if isinstance(item.get("content"), str) else None,
+            }
+            for item in output if isinstance(item, dict)
+        ]
+        return {
+            "error": (
+                f"JSON not found in response: {raw!r}; "
+                f"output={output_summary!r}; stats={stats!r}; "
+                f"response_keys={list(response.keys())!r}"
+            )
+        }
     except Exception as e:
         return {"error": str(e)}
 
