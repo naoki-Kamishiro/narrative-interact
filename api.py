@@ -62,17 +62,27 @@ def _native_chat(messages: list, max_output_tokens: int, temperature: float) -> 
         )
 
     system_parts = [str(m.get("content", "")) for m in messages if m.get("role") == "system"]
-    user_parts = [str(m.get("content", "")) for m in messages if m.get("role") == "user"]
-    unsupported = [m.get("role") for m in messages if m.get("role") not in ("system", "user")]
+    conversation = [m for m in messages if m.get("role") != "system"]
+    unsupported = [m.get("role") for m in conversation if m.get("role") not in ("user", "assistant")]
     if unsupported:
         raise ValueError(
-            "ネイティブJSON生成ではsystem/user以外のroleに対応していません: "
+            "ネイティブAPI変換で未対応のroleがあります: "
             + ", ".join(str(role) for role in unsupported)
         )
+    # Native /api/v1/chat はassistant roleを含むmessages配列を受け取らない。
+    # 既存履歴の順序と話者を明示したテキストとしてinputへ直列化し、毎回statelessで送る。
+    if any(m.get("role") == "assistant" for m in conversation):
+        transcript = []
+        for message in conversation:
+            speaker = "プレイヤー" if message.get("role") == "user" else "GM"
+            transcript.append(f"【{speaker}】\\n{str(message.get('content', ''))}")
+        input_text = "以下はこれまでの会話履歴です。話者と発言内容を区別して文脈として扱ってください。\\n\\n" + "\\n\\n".join(transcript)
+    else:
+        input_text = "\\n\\n".join(str(m.get("content", "")) for m in conversation)
     payload = {
         "model": loaded_ids[0],
-        "system_prompt": "\n\n".join(system_parts),
-        "input": "\n\n".join(user_parts),
+        "system_prompt": "\\n\\n".join(system_parts),
+        "input": input_text,
         "reasoning": "off",
         "max_output_tokens": max_output_tokens,
         "temperature": temperature,
@@ -114,35 +124,42 @@ def _show_progress(stop_event: threading.Event) -> None:
     sys.stdout.write("\r" + " " * 20 + "\r")
     sys.stdout.flush()
 
+def _native_diagnostic(label: str, response: dict, raw: str) -> None:
+    """Native APIの生成統計を診断ログへ出力する。"""
+    stats = response.get("stats", {})
+    output = response.get("output", [])
+    reasoning_length = sum(
+        len(item.get("content", ""))
+        for item in output
+        if isinstance(item, dict)
+        and item.get("type") == "reasoning"
+        and isinstance(item.get("content"), str)
+    )
+    print(f"\\n[{label}]", file=sys.stderr)
+    print(f"response_id: {response.get('response_id')!r}", file=sys.stderr)
+    print(f"input_tokens: {stats.get('input_tokens')!r}", file=sys.stderr)
+    print(f"total_output_tokens: {stats.get('total_output_tokens')!r}", file=sys.stderr)
+    print(f"reasoning_output_tokens: {stats.get('reasoning_output_tokens')!r}", file=sys.stderr)
+    print(f"content_length: {len(raw)}", file=sys.stderr)
+    print(f"reasoning_content_length: {reasoning_length}", file=sys.stderr)
+    print(f"output_types: {[item.get('type') for item in output if isinstance(item, dict)]!r}", file=sys.stderr)
+    print(f"status: {response.get('status')!r}", file=sys.stderr)
+    print(f"[{label}終了]\\n", file=sys.stderr)
+
+
 def chat(messages: list) -> str:
+    """GM応答。Native APIでReasoningを明示的にOFFにする。"""
     stop_event = threading.Event()
     t = threading.Thread(target=_show_progress, args=(stop_event,), daemon=True)
     t.start()
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=MAX_TOKENS,
+        response = _native_chat(
+            messages,
+            max_output_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
         )
-        choice = response.choices[0]
-        message = choice.message
-        raw = (message.content or "").strip()
-        usage = getattr(response, "usage", None)
-        details = getattr(usage, "completion_tokens_details", None) if usage else None
-        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
-        reasoning_content = getattr(message, "reasoning_content", None)
-        if reasoning_content is None:
-            reasoning_content = getattr(message, "reasoning", None)
-        print("\\n[GM応答API診断]", file=sys.stderr)
-        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
-        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
-        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
-        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
-        print(f"content_length: {len(raw)}", file=sys.stderr)
-        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
-        print("[GM応答API診断終了]\\n", file=sys.stderr)
+        raw = _native_response_text(response)
+        _native_diagnostic("GM応答API診断", response, raw)
         return raw
     except Exception as e:
         print(f"\\n[GM応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
@@ -154,49 +171,26 @@ def chat(messages: list) -> str:
         stop_event.set()
         t.join()
 
+
 def chat_player(gm_response: str, system_prompt: str, recent_actions: list | None = None) -> str:
-    """プレイヤーLLMにGM応答を渡して行動を生成する（自動プレイ用）。
-    recent_actions: 直近のプレイヤー行動リスト（ループ抑止用）。"""
+    """プレイヤーLLMにGM応答を渡して行動を生成する（自動プレイ用）。"""
     user_content = gm_response
     if recent_actions:
-        actions_text = "\n".join(f"  - {a}" for a in recent_actions)
+        actions_text = "\\n".join(f"  - {a}" for a in recent_actions)
         user_content = (
-            f"【直近の自分の行動（繰り返し禁止の参考に）】\n{actions_text}\n\n"
-            f"【現在の状況】\n{gm_response}"
+            f"【直近の自分の行動（繰り返し禁止の参考に）】\\n{actions_text}\\n\\n"
+            f"【現在の状況】\\n{gm_response}"
         )
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user",   "content": user_content},
+        {"role": "user", "content": user_content},
     ]
     try:
-        client = get_player_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=200,
-            temperature=0.8,
-        )
-        choice = response.choices[0]
-        message = choice.message
-        raw = (message.content or "").strip()
-        usage = getattr(response, "usage", None)
-        details = getattr(usage, "completion_tokens_details", None) if usage else None
-        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
-        reasoning_content = getattr(message, "reasoning_content", None)
-        if reasoning_content is None:
-            reasoning_content = getattr(message, "reasoning", None)
-        import sys
-        print("\\n[プレイヤー応答API診断]", file=sys.stderr)
-        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
-        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
-        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
-        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
-        print(f"content_length: {len(raw)}", file=sys.stderr)
-        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
-        print("[プレイヤー応答API診断終了]\\n", file=sys.stderr)
+        response = _native_chat(messages, max_output_tokens=200, temperature=0.8)
+        raw = _native_response_text(response)
+        _native_diagnostic("プレイヤー応答API診断", response, raw)
         return raw
     except Exception as e:
-        import sys
         print(f"\\n[プレイヤー応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
 
