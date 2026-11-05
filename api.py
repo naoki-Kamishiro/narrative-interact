@@ -204,7 +204,6 @@ def generate_genre_title(genre: str = "") -> dict:
     import json as _json
     import re as _re
     try:
-        client = get_client()
         for attempt in range(3):
             response = _native_chat(messages, max_output_tokens=1024, temperature=0.9)
             raw, reasoning_text = _native_response_text(response)
