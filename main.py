@@ -657,13 +657,10 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
     outcome = "成功" if dice_result["success"] else "失敗"
     intensity = dice_result.get("intensity", "normal")
     reason = dice_result.get("reason", "判定")
-    diff = dice_result["difficulty"]
-    roll = dice_result["dice"]
 
     if dice_result["success"] and intensity == "decisive":
         inst = (
-            "決定的な成功として描写すること。"
-            "行動の目的を大きく前進させる具体的な結果を示す。"
+            "成功として、この行動の目的を十分に達成した具体的な結果を描写すること。"
             "成功を無効化・矮小化しない。"
         )
     elif dice_result["success"]:
@@ -673,7 +670,7 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
         )
     elif intensity == "severe":
         inst = (
-            "重大な失敗として描写すること。目的は達成できない。"
+            "明確な失敗として描写すること。目的は達成できない。"
             "次の行動で対処可能な小規模な障害を最大1つ発生させる。"
             "失敗を成功に近い描写にしてはならない。"
         )
@@ -686,12 +683,30 @@ def _build_user_msg(action: str, dice_result: dict | None) -> str:
         )
 
     tag = (
-        f"（判定結果: {reason} / 難易度{diff} / 出目{roll} → {outcome}。"
+        f"（判定結果: {reason} → {outcome}。"
         f"{inst}"
         f"判定結果を受けてから、その結果に整合する物語を構築すること。"
         f"判定結果を地の文に出力しないこと。）"
     )
     return f"{action}\n{tag}"
+
+
+def _record_dice(h: list, dice_result: dict | None) -> None:
+    """判定の記録を state.dice_log に残す（GMには出目・難易度を渡さないため、ログ確認用）。
+    turn は gm_char_log と同じく user メッセージの通し番号（開始指示が1）。LLMには送らない。"""
+    if not dice_result:
+        return
+    turn = sum(1 for m in h if m["role"] == "user")
+    log = [e for e in state.get().get("dice_log", []) if e.get("turn") != turn]
+    log.append({
+        "turn": turn,
+        "reason": dice_result.get("reason", ""),
+        "difficulty": dice_result.get("difficulty"),
+        "dice": dice_result.get("dice"),
+        "success": dice_result.get("success"),
+        "intensity": dice_result.get("intensity", "normal"),
+    })
+    state.update({"dice_log": log})
 
 
 
@@ -1189,6 +1204,7 @@ def run_single_session(plot_mode: str) -> None:
             dice_mod.display_result(dice_result)
         user_msg = _build_user_msg(action, dice_result)
         h = hist.add_user(h, user_msg)
+        _record_dice(h, dice_result)
 
         # GMキャラクターコメント + 転換点フラグ設定
         _handle_gm_char_and_turning_point(action, h)
@@ -1507,6 +1523,7 @@ def main():
             dice_mod.display_result(dice_result)
         user_msg = _build_user_msg(action, dice_result)
         h = push_user(h, user_msg, pending_failed)
+        _record_dice(h, dice_result)
 
         # GMキャラクターコメント + 転換点フラグ設定
         _handle_gm_char_and_turning_point(action, h)
