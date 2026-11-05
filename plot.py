@@ -36,23 +36,19 @@ def generate(genre: str, title: str) -> dict:
 
 def _parse(raw: str) -> dict:
     if raw.startswith("[ERROR"):
-        print(f"[プロット解析診断] APIエラー応答: {raw}", file=sys.stderr)
         system_print("プロット生成中にエラーが発生しました")
         return {}
 
     cleaned = re.sub(r"```[a-z]*\n?", "", raw).strip()
     cleaned = re.sub(r"```", "", cleaned).strip()
-    normal_error = None
-    repair_error = None
 
     # まず通常のJSON解析を試みる
     try:
         result = json.loads(cleaned)
         if isinstance(result, dict):
             return _validate_and_repair(result)
-        normal_error = f"JSON root is {type(result).__name__}, not dict"
-    except json.JSONDecodeError as e:
-        normal_error = f"{type(e).__name__}: {e} (line={e.lineno}, col={e.colno}, pos={e.pos})"
+    except json.JSONDecodeError:
+        pass
 
     # 解析に失敗した場合、軽微な構文ミス（クォート欠落・末尾カンマ等）の
     # 自動修復を試みる
@@ -60,19 +56,10 @@ def _parse(raw: str) -> dict:
         repaired = repair_json(cleaned)
         result = json.loads(repaired)
         if isinstance(result, dict):
-            print("[プロット解析診断] 通常JSON解析は失敗しましたが、repair_jsonで修復できました。", file=sys.stderr)
             return _validate_and_repair(result)
-        repair_error = f"Repaired JSON root is {type(result).__name__}, not dict"
-    except Exception as e:
-        repair_error = f"{type(e).__name__}: {e}"
+    except Exception:
+        pass
 
-    print("[プロット解析診断] JSON解析失敗", file=sys.stderr)
-    print(f"raw_length: {len(raw)}", file=sys.stderr)
-    print(f"normal_parse: {normal_error}", file=sys.stderr)
-    print(f"repair_parse: {repair_error}", file=sys.stderr)
-    if 'repaired' in locals():
-        print("repaired_preview:", file=sys.stderr)
-        print(repaired[:4000] if repaired else "<EMPTY>", file=sys.stderr)
     system_print("プロットのJSON解析に失敗しました")
     return {}
 
