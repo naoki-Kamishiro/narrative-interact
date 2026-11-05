@@ -361,7 +361,9 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
 
 
 def chat_json(messages: list) -> str:
-    """JSON出力専用。プロット生成など内部処理用。"""
+    """JSON出力専用。API応答の診断情報をstderrに記録する。"""
+    import sys
+
     stop_event = threading.Event()
     t = threading.Thread(target=_show_progress, args=(stop_event,), daemon=True)
     t.start()
@@ -373,8 +375,36 @@ def chat_json(messages: list) -> str:
             max_tokens=4096,
             temperature=0.5,
         )
-        return response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        message = choice.message
+        raw = (message.content or "").strip()
+        usage = getattr(response, "usage", None)
+        details = getattr(usage, "completion_tokens_details", None) if usage else None
+        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
+        reasoning_content = getattr(message, "reasoning_content", None)
+        if reasoning_content is None:
+            reasoning_content = getattr(message, "reasoning", None)
+
+        print("\n[プロット生成API診断]", file=sys.stderr)
+        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
+        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
+        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
+        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
+        print(f"content_length: {len(raw)}", file=sys.stderr)
+        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
+        print("message.content:", file=sys.stderr)
+        print(raw[:12000] if raw else "<EMPTY>", file=sys.stderr)
+        if len(raw) > 12000:
+            print(f"<本文は12000文字で切り詰め。残り{len(raw) - 12000}文字>", file=sys.stderr)
+        if isinstance(reasoning_content, str) and reasoning_content:
+            print("message.reasoning_content:", file=sys.stderr)
+            print(reasoning_content[:4000], file=sys.stderr)
+            if len(reasoning_content) > 4000:
+                print(f"<推論本文は4000文字で切り詰め。残り{len(reasoning_content) - 4000}文字>", file=sys.stderr)
+        print("[プロット生成API診断終了]\n", file=sys.stderr)
+        return raw
     except Exception as e:
+        print(f"\n[プロット生成API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
     finally:
         stop_event.set()
