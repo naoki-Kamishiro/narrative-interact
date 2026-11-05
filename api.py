@@ -454,21 +454,31 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
         {"role": "user", "content": user_content},
     ]
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=32,
+        response = _native_chat(
+            messages,
+            max_output_tokens=32,
             temperature=0.9,
         )
-        comment = response.choices[0].message.content.strip()
+        raw = _native_response_text(response)
+        _native_diagnostic("GMキャラクターコメントAPI診断", response, raw)
+        comment = raw
         # 複数行になった場合は1行目のみ
         comment = comment.split("\n")[0].strip()
         # 長すぎる場合は切り捨て
         if len(comment) > 30:
             comment = comment[:30]
+        if not comment:
+            print(
+                "[GMキャラクターコメント空応答] "
+                f"character={character!r}, action={action!r}",
+                file=sys.stderr,
+            )
         return comment
-    except Exception:
+    except Exception as e:
+        print(
+            f"[GMキャラクターコメントAPI例外] {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
         return ""
 
 
