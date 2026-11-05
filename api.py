@@ -20,6 +20,100 @@ def get_player_client() -> OpenAI:
         _player_client = OpenAI(base_url=PLAYER_URL, api_key=API_KEY)
     return _player_client
 
+def _native_chat(messages: list, max_output_tokens: int, temperature: float) -> dict:
+    """LM StudioネイティブAPIでReasoningを明示的にOFFにして生成する。"""
+    import json
+    import urllib.error
+    import urllib.request
+
+    base_url = LM_STUDIO_URL.rstrip("/")
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-3]
+    api_base = f"{base_url}/api/v1"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    # ネイティブAPIは 'local' ではなく、実際のロード済みモデルIDを要求する。
+    models_request = urllib.request.Request(
+        f"{api_base}/models", headers=headers, method="GET"
+    )
+    try:
+        with urllib.request.urlopen(models_request, timeout=15) as response:
+            models_data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"LM Studioモデル一覧取得失敗 ({e.code}): {detail}") from e
+
+    loaded_ids = []
+    for model_info in models_data.get("models", []):
+        if model_info.get("type") != "llm":
+            continue
+        for instance in model_info.get("loaded_instances", []):
+            model_id = instance.get("id") or model_info.get("key")
+            if model_id and model_id not in loaded_ids:
+                loaded_ids.append(model_id)
+
+    if len(loaded_ids) == 0:
+        raise RuntimeError("LM Studioにロード済みのLLMがありません。")
+    if len(loaded_ids) > 1:
+        raise RuntimeError(
+            "ロード済みLLMが複数あります。使用モデルを特定できません: "
+            + ", ".join(loaded_ids)
+        )
+
+    system_parts = [
+        str(m.get("content", "")) for m in messages if m.get("role") == "system"
+    ]
+    user_parts = [
+        str(m.get("content", "")) for m in messages if m.get("role") == "user"
+    ]
+    unsupported = [
+        m.get("role") for m in messages
+        if m.get("role") not in ("system", "user")
+    ]
+    if unsupported:
+        raise ValueError(
+            "ネイティブJSON生成ではsystem/user以外のroleに対応していません: "
+            + ", ".join(str(role) for role in unsupported)
+        )
+
+    payload = {
+        "model": loaded_ids[0],
+        "system_prompt": "\n\n".join(system_parts),
+        "input": "\n\n".join(user_parts),
+        "reasoning": "off",
+        "max_output_tokens": max_output_tokens,
+        "temperature": temperature,
+        "store": False,
+    }
+    request = urllib.request.Request(
+        f"{api_base}/chat",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"LM StudioチャットAPI失敗 ({e.code}): {detail}") from e
+
+
+def _native_response_text(response: dict) -> tuple[str, str]:
+    """ネイティブAPI応答から通常本文と推論本文を分離して取得する。"""
+    message_parts = []
+    reasoning_parts = []
+    for item in response.get("output", []):
+        if item.get("type") == "message" and isinstance(item.get("content"), str):
+            message_parts.append(item["content"])
+        elif item.get("type") == "reasoning" and isinstance(item.get("content"), str):
+            reasoning_parts.append(item["content"])
+    return "\n".join(message_parts).strip(), "\n".join(reasoning_parts)
+
+
 def _show_progress(stop_event: threading.Event) -> None:
     """生成中にドットを表示するスレッド関数。"""
     import sys
@@ -112,21 +206,20 @@ def generate_genre_title(genre: str = "") -> dict:
     try:
         client = get_client()
         for attempt in range(3):
-            response = client.chat.completions.create(
-                model="local",
-                messages=messages,
-                max_tokens=1024,
-                temperature=0.9,
-            )
-            choice = response.choices[0]
-            raw = (choice.message.content or "").strip()
+            response = _native_chat(messages, max_output_tokens=1024, temperature=0.9)
+            raw, reasoning_text = _native_response_text(response)
             if not raw:
                 if attempt < 2:
                     time.sleep(0.5)
                     continue
-                usage = getattr(response, "usage", None)
-                finish_reason = getattr(choice, "finish_reason", None)
-                return {"error": f"Empty response after 3 attempts: finish_reason={finish_reason!r}, usage={usage!r}"}
+                stats = response.get("stats", {})
+                return {
+                    "error": (
+                        "Empty response after 3 attempts: "
+                        f"reasoning_output_tokens={stats.get('reasoning_output_tokens')!r}, "
+                        f"reasoning_content_length={len(reasoning_text)}"
+                    )
+                }
             # JSONブロックを抽出
             m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
             if m:
@@ -361,50 +454,38 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
 
 
 def chat_json(messages: list) -> str:
-    """JSON出力専用。API応答の診断情報をstderrに記録する。"""
+    """JSON出力専用。LM StudioネイティブAPIでReasoningをOFFにする。"""
     import sys
 
     stop_event = threading.Event()
     t = threading.Thread(target=_show_progress, args=(stop_event,), daemon=True)
     t.start()
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=4096,
-            temperature=0.5,
-        )
-        choice = response.choices[0]
-        message = choice.message
-        raw = (message.content or "").strip()
-        usage = getattr(response, "usage", None)
-        details = getattr(usage, "completion_tokens_details", None) if usage else None
-        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
-        reasoning_content = getattr(message, "reasoning_content", None)
-        if reasoning_content is None:
-            reasoning_content = getattr(message, "reasoning", None)
-
-        print("\n[プロット生成API診断]", file=sys.stderr)
-        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
-        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
-        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
-        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
+        response = _native_chat(messages, max_output_tokens=4096, temperature=0.5)
+        raw, reasoning_content = _native_response_text(response)
+        stats = response.get("stats", {})
+        reasoning_tokens = stats.get("reasoning_output_tokens")
+        print("\\n[プロット生成API診断]", file=sys.stderr)
+        print("endpoint: /api/v1/chat", file=sys.stderr)
+        print("reasoning: off", file=sys.stderr)
+        print(f"input_tokens: {stats.get('input_tokens')!r}", file=sys.stderr)
+        print(f"total_output_tokens: {stats.get('total_output_tokens')!r}", file=sys.stderr)
+        print(f"reasoning_output_tokens: {reasoning_tokens!r}", file=sys.stderr)
         print(f"content_length: {len(raw)}", file=sys.stderr)
-        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
+        print(f"reasoning_content_length: {len(reasoning_content)}", file=sys.stderr)
         print("message.content:", file=sys.stderr)
         print(raw[:12000] if raw else "<EMPTY>", file=sys.stderr)
         if len(raw) > 12000:
             print(f"<本文は12000文字で切り詰め。残り{len(raw) - 12000}文字>", file=sys.stderr)
-        if isinstance(reasoning_content, str) and reasoning_content:
-            print("message.reasoning_content:", file=sys.stderr)
+        if reasoning_content:
+            print("message.reasoning:", file=sys.stderr)
             print(reasoning_content[:4000], file=sys.stderr)
             if len(reasoning_content) > 4000:
                 print(f"<推論本文は4000文字で切り詰め。残り{len(reasoning_content) - 4000}文字>", file=sys.stderr)
-        print("[プロット生成API診断終了]\n", file=sys.stderr)
+        print("[プロット生成API診断終了]\\n", file=sys.stderr)
         return raw
     except Exception as e:
-        print(f"\n[プロット生成API例外] {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"\\n[プロット生成API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
     finally:
         stop_event.set()
