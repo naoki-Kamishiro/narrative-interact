@@ -124,28 +124,6 @@ def _show_progress(stop_event: threading.Event) -> None:
     sys.stdout.write("\r" + " " * 20 + "\r")
     sys.stdout.flush()
 
-def _native_diagnostic(label: str, response: dict, raw: str) -> None:
-    """Native APIの生成統計を診断ログへ出力する。"""
-    stats = response.get("stats", {})
-    output = response.get("output", [])
-    reasoning_length = sum(
-        len(item.get("content", ""))
-        for item in output
-        if isinstance(item, dict)
-        and item.get("type") == "reasoning"
-        and isinstance(item.get("content"), str)
-    )
-    print(f"\\n[{label}]", file=sys.stderr)
-    print(f"response_id: {response.get('response_id')!r}", file=sys.stderr)
-    print(f"input_tokens: {stats.get('input_tokens')!r}", file=sys.stderr)
-    print(f"total_output_tokens: {stats.get('total_output_tokens')!r}", file=sys.stderr)
-    print(f"reasoning_output_tokens: {stats.get('reasoning_output_tokens')!r}", file=sys.stderr)
-    print(f"content_length: {len(raw)}", file=sys.stderr)
-    print(f"reasoning_content_length: {reasoning_length}", file=sys.stderr)
-    print(f"output_types: {[item.get('type') for item in output if isinstance(item, dict)]!r}", file=sys.stderr)
-    print(f"status: {response.get('status')!r}", file=sys.stderr)
-    print(f"[{label}終了]\\n", file=sys.stderr)
-
 
 def chat(messages: list) -> str:
     """GM応答。Native APIでReasoningを明示的にOFFにする。"""
@@ -159,10 +137,8 @@ def chat(messages: list) -> str:
             temperature=TEMPERATURE,
         )
         raw = _native_response_text(response)
-        _native_diagnostic("GM応答API診断", response, raw)
         return raw
     except Exception as e:
-        print(f"\\n[GM応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         err = str(e)
         if "exceed_context_size_error" in err or "exceeds the available context size" in err:
             return "[CONTEXT_LIMIT]"
@@ -188,10 +164,8 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
     try:
         response = _native_chat(messages, max_output_tokens=200, temperature=0.8)
         raw = _native_response_text(response)
-        _native_diagnostic("プレイヤー応答API診断", response, raw)
         return raw
     except Exception as e:
-        print(f"\\n[プレイヤー応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
 
 
@@ -460,25 +434,14 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
             temperature=0.9,
         )
         raw = _native_response_text(response)
-        _native_diagnostic("GMキャラクターコメントAPI診断", response, raw)
         comment = raw
         # 複数行になった場合は1行目のみ
         comment = comment.split("\n")[0].strip()
         # 長すぎる場合は切り捨て
         if len(comment) > 30:
             comment = comment[:30]
-        if not comment:
-            print(
-                "[GMキャラクターコメント空応答] "
-                f"character={character!r}, action={action!r}",
-                file=sys.stderr,
-            )
         return comment
-    except Exception as e:
-        print(
-            f"[GMキャラクターコメントAPI例外] {type(e).__name__}: {e}",
-            file=sys.stderr,
-        )
+    except Exception:
         return ""
 
 
