@@ -115,7 +115,7 @@ def generate_genre_title(genre: str = "") -> dict:
             response = client.chat.completions.create(
                 model="local",
                 messages=messages,
-                max_tokens=128,
+                max_tokens=1024,
                 temperature=0.9,
             )
             choice = response.choices[0]
