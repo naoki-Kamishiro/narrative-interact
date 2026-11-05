@@ -144,7 +144,6 @@ def chat(messages: list) -> str:
         print("[GM応答API診断終了]\\n", file=sys.stderr)
         return raw
     except Exception as e:
-        import sys
         print(f"\\n[GM応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         err = str(e)
         if "exceed_context_size_error" in err or "exceeds the available context size" in err:
