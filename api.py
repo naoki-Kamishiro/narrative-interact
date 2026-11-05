@@ -176,8 +176,28 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
             max_tokens=200,
             temperature=0.8,
         )
-        return response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        message = choice.message
+        raw = (message.content or "").strip()
+        usage = getattr(response, "usage", None)
+        details = getattr(usage, "completion_tokens_details", None) if usage else None
+        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
+        reasoning_content = getattr(message, "reasoning_content", None)
+        if reasoning_content is None:
+            reasoning_content = getattr(message, "reasoning", None)
+        import sys
+        print("\\n[プレイヤー応答API診断]", file=sys.stderr)
+        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
+        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
+        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
+        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
+        print(f"content_length: {len(raw)}", file=sys.stderr)
+        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
+        print("[プレイヤー応答API診断終了]\\n", file=sys.stderr)
+        return raw
     except Exception as e:
+        import sys
+        print(f"\\n[プレイヤー応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
 
 
