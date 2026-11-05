@@ -105,7 +105,7 @@ The world moves even if the player does nothing. Just watching or waiting still 
 
 If dice resolution is enabled, some actions trigger a dice roll, and the outcome is reflected in the GM's narration. The difficulty can be chosen at launch (easy / normal / hard).
 
-The roll is decided by Python's `random.randint(1, 20)`. The AI only decides "whether a roll is needed" and "how to classify the action's risk and uncertainty"; it has no involvement in the roll or the difficulty numbers.
+The roll is decided by Python's `random.randint(1, 20)`. The AI only decides "whether a roll is needed" and "how to classify the action's risk and uncertainty"; it has no involvement in the roll or the difficulty numbers. The GM receives only the outcome and instructions matching its strength, not the numbers (the roll and difficulty are recorded in the JSON log).
 
 ### 4. Ending
 
@@ -206,7 +206,7 @@ These may improve with a more capable model.
 **Model-dependent (full resolution depends on the model's ability)**
 
 - **Adding new settings first**: Adds new settings, threats, or characters instead of deriving results from what is already established
-- **Uniformly large outcomes**: Triggers story-shaking developments regardless of how strong the roll was
+- **Uniformly large outcomes**: Triggers story-shaking developments regardless of how strong the roll was (often it is a plot milestone advancing in the same turn, rather than the roll result itself, that makes the outcome look large)
 - **Ignoring genre constraints**: Creates hostile developments even in genres where combat is disabled, often triggered by a severe failure
 - **Epilogue contradicting the story**: Occasionally narrates the opposite of the player's choice, or a plot loss that never appeared in the story, in the epilogue (showing a later moment as the outcome of something already set in motion in the story is by design)
 - **Rewriting the player's input**: Narrates a different action from the one entered, to make things fit
