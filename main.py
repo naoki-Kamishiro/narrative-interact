@@ -649,6 +649,9 @@ def _after_reply(reply: str) -> None:
     state.update({"turning_point_injected": False})
 
 
+AUTO_GM_ERROR_LIMIT = 3  # 自動プレイでGM応答エラーがこの回数続いたら終了する
+
+
 def _build_user_msg(action: str, dice_result: dict | None) -> str:
     """userメッセージを構築する。ダイス結果を冒頭に置き、行動テキストをその後に。"""
     if not dice_result:
@@ -812,7 +815,10 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
             print("[TURNING] turning point detected (llm judge)", file=sys.stderr)
 
     # GMキャラクターコメント（turning_pointの場合のみ）
-    if is_turning_point and gm_character != "none":
+    # 同じターンのやり直し（GM応答エラー後の再試行等）では一言を作り直さない
+    _turn = sum(1 for m in h if m["role"] == "user")
+    _already = any(e.get("turn") == _turn for e in s.get("gm_char_log", []))
+    if is_turning_point and gm_character != "none" and not _already:
         comment = generate_gm_char_comment(action, h, gm_character, gm_char_log=s.get("gm_char_log", []))
         if comment:
             gm_char_print(comment)
@@ -1158,6 +1164,7 @@ def run_single_session(plot_mode: str) -> None:
 
     auto_play_turn = 0
     AUTO_PLAY_MAX_TURNS = 40
+    gm_error_streak = 0  # GM応答エラーの連続回数（上限で打ち切り、ターン上限を無駄に消費しない）
 
     while True:
         auto_play_turn += 1
@@ -1218,8 +1225,15 @@ def run_single_session(plot_mode: str) -> None:
         if reply.startswith("[ERROR"):
             error_print("応答生成に失敗しました。スキップして続行します。")
             h.pop()
+            gm_error_streak += 1
+            if gm_error_streak >= AUTO_GM_ERROR_LIMIT:
+                system_print(f"GMの応答生成が{AUTO_GM_ERROR_LIMIT}回続けて失敗したため終了します。")
+                state.update({"end_reason": "api_error"})
+                save_session_json(h, title)
+                break
             continue
 
+        gm_error_streak = 0
         h = hist.add_assistant(h, reply)
         last_gm_reply = reply
         _after_reply(reply)
@@ -1358,6 +1372,7 @@ def main():
     last_gm_reply = initial_reply  # 自動プレイ用: 最後のGM応答（初回含む）
     auto_play_turn = 0  # 自動プレイのターンカウンタ
     AUTO_PLAY_MAX_TURNS = 40  # 自動プレイの最大ターン数
+    gm_error_streak = 0  # 自動プレイ時のGM応答エラーの連続回数
 
     while True:
         if AUTO_PLAY_MODE:
@@ -1545,8 +1560,17 @@ def main():
             # userメッセージ（ダイス結果込み）は保持したまま続行。
             # /retryで再利用でき、別の行動を入力した場合は置き換えられる。
             pending_failed = True
+            if AUTO_PLAY_MODE:
+                gm_error_streak += 1
+                if gm_error_streak >= AUTO_GM_ERROR_LIMIT:
+                    system_print(f"GMの応答生成が{AUTO_GM_ERROR_LIMIT}回続けて失敗したため終了します。")
+                    state.update({"end_reason": "api_error"})
+                    save_mod.save(state.get(), h)
+                    save_session_json(h, title)
+                    break
             continue
 
+        gm_error_streak = 0
         pending_failed = False
         h = hist.add_assistant(h, reply)
         last_gm_reply = reply
