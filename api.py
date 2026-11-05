@@ -125,8 +125,27 @@ def chat(messages: list) -> str:
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
         )
-        return response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        message = choice.message
+        raw = (message.content or "").strip()
+        usage = getattr(response, "usage", None)
+        details = getattr(usage, "completion_tokens_details", None) if usage else None
+        reasoning_tokens = getattr(details, "reasoning_tokens", None) if details else None
+        reasoning_content = getattr(message, "reasoning_content", None)
+        if reasoning_content is None:
+            reasoning_content = getattr(message, "reasoning", None)
+        print("\\n[GM応答API診断]", file=sys.stderr)
+        print(f"finish_reason: {getattr(choice, 'finish_reason', None)!r}", file=sys.stderr)
+        print(f"prompt_tokens: {getattr(usage, 'prompt_tokens', None)!r}", file=sys.stderr)
+        print(f"completion_tokens: {getattr(usage, 'completion_tokens', None)!r}", file=sys.stderr)
+        print(f"reasoning_tokens: {reasoning_tokens!r}", file=sys.stderr)
+        print(f"content_length: {len(raw)}", file=sys.stderr)
+        print(f"reasoning_content_length: {len(reasoning_content) if isinstance(reasoning_content, str) else None}", file=sys.stderr)
+        print("[GM応答API診断終了]\\n", file=sys.stderr)
+        return raw
     except Exception as e:
+        import sys
+        print(f"\\n[GM応答API例外] {type(e).__name__}: {e}", file=sys.stderr)
         err = str(e)
         if "exceed_context_size_error" in err or "exceeds the available context size" in err:
             return "[CONTEXT_LIMIT]"
