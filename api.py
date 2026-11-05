@@ -190,14 +190,8 @@ def generate_genre_title(genre: str = "") -> dict:
     import json as _json
     import re as _re
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=128,
-            temperature=0.9,
-        )
-        raw = response.choices[0].message.content.strip()
+        response = _native_chat(messages, max_output_tokens=128, temperature=0.9)
+        raw = _native_response_text(response)
         # JSONブロックを抽出
         m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
         if m:
