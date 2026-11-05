@@ -75,13 +75,13 @@ def _native_chat(messages: list, max_output_tokens: int, temperature: float) -> 
         transcript = []
         for message in conversation:
             speaker = "プレイヤー" if message.get("role") == "user" else "GM"
-            transcript.append(f"【{speaker}】\\n{str(message.get('content', ''))}")
-        input_text = "以下はこれまでの会話履歴です。話者と発言内容を区別して文脈として扱ってください。\\n\\n" + "\\n\\n".join(transcript)
+            transcript.append(f"【{speaker}】\n{str(message.get('content', ''))}")
+        input_text = "以下はこれまでの会話履歴です。話者と発言内容を区別して文脈として扱ってください。\n\n" + "\n\n".join(transcript)
     else:
-        input_text = "\\n\\n".join(str(m.get("content", "")) for m in conversation)
+        input_text = "\n\n".join(str(m.get("content", "")) for m in conversation)
     payload = {
         "model": loaded_ids[0],
-        "system_prompt": "\\n\\n".join(system_parts),
+        "system_prompt": "\n\n".join(system_parts),
         "input": input_text,
         "reasoning": "off",
         "max_output_tokens": max_output_tokens,
