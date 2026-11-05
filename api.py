@@ -20,6 +20,86 @@ def get_player_client() -> OpenAI:
         _player_client = OpenAI(base_url=PLAYER_URL, api_key=API_KEY)
     return _player_client
 
+def _native_chat(messages: list, max_output_tokens: int, temperature: float) -> dict:
+    """LM StudioネイティブAPIでReasoningを明示的にOFFにして生成する。"""
+    import json
+    import urllib.error
+    import urllib.request
+
+    base_url = LM_STUDIO_URL.rstrip("/")
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-3]
+    api_base = f"{base_url}/api/v1"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
+    models_request = urllib.request.Request(
+        f"{api_base}/models", headers=headers, method="GET"
+    )
+    try:
+        with urllib.request.urlopen(models_request, timeout=15) as response:
+            models_data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"LM Studioモデル一覧取得失敗 ({e.code}): {detail}") from e
+
+    loaded_ids = []
+    for model_info in models_data.get("models", []):
+        if model_info.get("type") != "llm":
+            continue
+        for instance in model_info.get("loaded_instances", []):
+            model_id = instance.get("id") or model_info.get("key")
+            if model_id and model_id not in loaded_ids:
+                loaded_ids.append(model_id)
+    if len(loaded_ids) == 0:
+        raise RuntimeError("LM Studioにロード済みのLLMがありません。")
+    if len(loaded_ids) > 1:
+        raise RuntimeError(
+            "ロード済みLLMが複数あります。使用モデルを特定できません: "
+            + ", ".join(loaded_ids)
+        )
+
+    system_parts = [str(m.get("content", "")) for m in messages if m.get("role") == "system"]
+    user_parts = [str(m.get("content", "")) for m in messages if m.get("role") == "user"]
+    unsupported = [m.get("role") for m in messages if m.get("role") not in ("system", "user")]
+    if unsupported:
+        raise ValueError(
+            "ネイティブJSON生成ではsystem/user以外のroleに対応していません: "
+            + ", ".join(str(role) for role in unsupported)
+        )
+    payload = {
+        "model": loaded_ids[0],
+        "system_prompt": "\n\n".join(system_parts),
+        "input": "\n\n".join(user_parts),
+        "reasoning": "off",
+        "max_output_tokens": max_output_tokens,
+        "temperature": temperature,
+        "store": False,
+    }
+    request = urllib.request.Request(
+        f"{api_base}/chat",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"LM StudioチャットAPI失敗 ({e.code}): {detail}") from e
+
+
+def _native_response_text(response: dict) -> str:
+    """ネイティブAPI応答から通常の本文だけを取得する。"""
+    parts = [
+        item["content"]
+        for item in response.get("output", [])
+        if item.get("type") == "message" and isinstance(item.get("content"), str)
+    ]
+    return "\n".join(parts).strip()
+
 def _show_progress(stop_event: threading.Event) -> None:
     """生成中にドットを表示するスレッド関数。"""
     import sys
@@ -351,19 +431,13 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
 
 
 def chat_json(messages: list) -> str:
-    """JSON出力専用。プロット生成など内部処理用。"""
+    """JSON出力専用。LM StudioネイティブAPIでReasoningをOFFにする。"""
     stop_event = threading.Event()
     t = threading.Thread(target=_show_progress, args=(stop_event,), daemon=True)
     t.start()
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=4096,
-            temperature=0.5,
-        )
-        return response.choices[0].message.content.strip()
+        response = _native_chat(messages, max_output_tokens=4096, temperature=0.5)
+        return _native_response_text(response)
     except Exception as e:
         return f"[ERROR: {e}]"
     finally:
