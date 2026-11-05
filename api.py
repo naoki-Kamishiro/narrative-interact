@@ -111,18 +111,28 @@ def generate_genre_title(genre: str = "") -> dict:
     import re as _re
     try:
         client = get_client()
-        response = client.chat.completions.create(
-            model="local",
-            messages=messages,
-            max_tokens=128,
-            temperature=0.9,
-        )
-        raw = response.choices[0].message.content.strip()
-        # JSONブロックを抽出
-        m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
-        if m:
-            return _json.loads(m.group())
-        return {"error": f"JSON not found in response: {raw}"}
+        for attempt in range(3):
+            response = client.chat.completions.create(
+                model="local",
+                messages=messages,
+                max_tokens=128,
+                temperature=0.9,
+            )
+            choice = response.choices[0]
+            raw = (choice.message.content or "").strip()
+            if not raw:
+                if attempt < 2:
+                    time.sleep(0.5)
+                    continue
+                usage = getattr(response, "usage", None)
+                finish_reason = getattr(choice, "finish_reason", None)
+                return {"error": f"Empty response after 3 attempts: finish_reason={finish_reason!r}, usage={usage!r}"}
+            # JSONブロックを抽出
+            m = _re.search(r'\{.*?\}', raw, _re.DOTALL)
+            if m:
+                return _json.loads(m.group())
+            return {"error": f"JSON not found in response: {raw}"}
+        return {"error": "Empty response after 3 attempts"}
     except Exception as e:
         return {"error": str(e)}
 
