@@ -464,7 +464,7 @@ def chat_json(messages: list) -> str:
         raw, reasoning_content = _native_response_text(response)
         stats = response.get("stats", {})
         reasoning_tokens = stats.get("reasoning_output_tokens")
-        print("\\n[プロット生成API診断]", file=sys.stderr)
+        print("\n[プロット生成API診断]", file=sys.stderr)
         print("endpoint: /api/v1/chat", file=sys.stderr)
         print("reasoning: off", file=sys.stderr)
         print(f"input_tokens: {stats.get('input_tokens')!r}", file=sys.stderr)
@@ -481,10 +481,10 @@ def chat_json(messages: list) -> str:
             print(reasoning_content[:4000], file=sys.stderr)
             if len(reasoning_content) > 4000:
                 print(f"<推論本文は4000文字で切り詰め。残り{len(reasoning_content) - 4000}文字>", file=sys.stderr)
-        print("[プロット生成API診断終了]\\n", file=sys.stderr)
+        print("[プロット生成API診断終了]\n", file=sys.stderr)
         return raw
     except Exception as e:
-        print(f"\\n[プロット生成API例外] {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"\n[プロット生成API例外] {type(e).__name__}: {e}", file=sys.stderr)
         return f"[ERROR: {e}]"
     finally:
         stop_event.set()
