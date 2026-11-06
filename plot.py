@@ -128,6 +128,20 @@ def _validate_and_repair(plot: dict) -> dict:
     if isinstance(chars, list):
         plot["characters"] = [c if isinstance(c, dict) else {"name": str(c)} for c in chars]
 
+    # conflicts が配列でなく1件のオブジェクトで返り、残りの対立が type / content として
+    # トップレベルにはみ出す崩れ方を配列に戻す（そのままだと【対立構造】が丸ごと消える）
+    conflicts = plot.get("conflicts")
+    if isinstance(conflicts, dict):
+        conflicts = [conflicts]
+    elif not isinstance(conflicts, list):
+        conflicts = []
+    stray_type, stray_content = plot.get("type"), plot.get("content")
+    if isinstance(stray_type, str) and isinstance(stray_content, str) and stray_content:
+        conflicts.append({"type": stray_type, "content": stray_content})
+        plot.pop("type", None)
+        plot.pop("content", None)
+    plot["conflicts"] = [c for c in conflicts if isinstance(c, dict)]
+
     # リスト系フィールドが dict でない場合は空リストに
     for list_key in ("misconceptions", "failures", "twists", "choices"):
         val = plot.get(list_key)
