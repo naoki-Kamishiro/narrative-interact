@@ -309,8 +309,8 @@ def check_turning_point(recent_history: list[dict], action: str) -> bool:
 GM_CHAR_PROMPTS = {
     "cynical": (
         "あなたはテキストRPGのGMで、シニカルな性格のキャラクターです。\n"
-        "プレイヤーの行動の具体的な内容に触れて、斜に構えた一言コメントをしてください。\n"
-        "15字以内の一言のみ。説明・句読点・改行は最小限。"
+        "プレイヤーの行動と、それが招きそうな成り行きのずれや皮肉を、冷めた観察として一言で述べてください。プレイヤー本人を貶さないこと。\n"
+        "20字以内の一言のみ。説明・句読点・改行は最小限。"
     ),
 }
 
@@ -319,7 +319,7 @@ GM_CHAR_LABELS = {
 }
 
 
-def generate_gm_char_comment(action: str, recent_history: list[dict], character: str, gm_char_log: list[dict] | None = None) -> str:
+def generate_gm_char_comment(action: str, recent_history: list[dict], character: str, gm_char_log: list[dict] | None = None, genre: str = "") -> str:
     """GMキャラクターの一言コメントを生成する。
     character: "tsukkomi" / "cynical" / "worrier"
     gm_char_log: これまでの全コメント履歴（繰り返し抑止用）
@@ -337,7 +337,8 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
         comments = [entry["comment"] for entry in gm_char_log if "comment" in entry]
         if comments:
             past_comments = "【これまでに使ったコメント（語尾・語法のパターンを読み取り、同じパターンを繰り返さないこと）】\n" + "\n".join(f"- {c}" for c in comments) + "\n\n"
-    user_content = f"{past_comments}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}プレイヤーの行動: {action}"
+    genre_line = f"ジャンル: {genre}\n" if genre else ""
+    user_content = f"{past_comments}{genre_line}直近の状況:\n{context}\n\nプレイヤーの行動: {action}" if context else f"{past_comments}{genre_line}プレイヤーの行動: {action}"
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_content},
