@@ -635,6 +635,17 @@ def _after_reply(reply: str) -> None:
                 tp_beat = last_beat.get("timing") == "中盤"
         state.update({"beat_queue": queue, "beat_ptr": ptr, "beat_just_advanced": advanced,
                       "turning_point_beat": tp_beat})
+        # strong: 開始シーン（最初のGM応答）に既に名前が出た人物は、登場ビートを完了扱いにする
+        # （開始の依頼文に登場人物を全員並べるため、後から「現れる」指示が二重に入るのを防ぐ）
+        if _is_strong() and not state.get().get("opening_chars_checked", False):
+            marked = []
+            for b in queue[ptr:]:
+                if b.get("type") == "character" and not b["done"] and beat_mod.detect_character(reply, b.get("name", "")):
+                    b["done"] = True
+                    marked.append(b.get("name", ""))
+            state.update({"beat_queue": queue, "opening_chars_checked": True})
+            if DEBUG_MODE and marked:
+                print(f"[BEAT] already in opening: {', '.join(marked)}", file=sys.stderr)
         # strong: 選択ビートが消化されたら、次の1ターンは次のビートを注入せず選択の結果を描かせる
         if _is_strong() and advanced and 0 < ptr <= len(queue) and queue[ptr - 1].get("type") == "choice":
             # エピローグで選択の結果を回収させるため、提示した選択を記録する
