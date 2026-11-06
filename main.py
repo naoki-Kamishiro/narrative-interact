@@ -830,7 +830,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
     _turn = sum(1 for m in h if m["role"] == "user")
     _already = any(e.get("turn") == _turn for e in s.get("gm_char_log", []))
     if is_turning_point and gm_character != "none" and not _already:
-        comment = generate_gm_char_comment(action, h, gm_character, gm_char_log=s.get("gm_char_log", []))
+        comment = generate_gm_char_comment(action, h, gm_character, gm_char_log=s.get("gm_char_log", []), genre=s.get("genre", ""))
         if comment:
             gm_char_print(comment)
             if DEBUG_MODE:
