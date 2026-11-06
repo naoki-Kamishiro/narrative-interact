@@ -1003,7 +1003,9 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - ユーザーの方針：シンキングはさせない（待ち時間と無駄なトークン消費のため）。推論させて本文だけ取り出す方式は不可。役割つき messages のまま推論オフを実現したい
 - 調査：LM Studio の変更履歴では OpenAI互換で推論の強さを指定できるのは gpt-oss の一部のみ。bug tracker #1990 で OpenAI互換APIからの enable_thinking=false 等が効かない報告（Gemma v4 でも同様との書き込み）。回避策としてプロンプトテンプレートの差し替えが挙がっている
 - 第1段：tools/check_reasoning_off.py（OpenAI互換 /v1/chat/completions に役割つき複数ターンを送り、reasoning_effort・reasoning・chat_template_kwargs 等の候補ごとに推論の有無・トークン数・秒数を表示し、tools/check_reasoning_off_result.json に保存）。ユーザーが手元の LM Studio＋QAT版で実行し結果を貼る
-- 次：効く指定があれば api.py の全呼び出し（GM・プレイヤー・プロット・タイトル・ダイス・GMの一言・転換点・エピローグ）に足す。無ければ LM Studio 側のテンプレート差し替え、最後の手段としてネイティブAPIの履歴表記の改善
+- 第1段の結果（ユーザーの LM Studio＋QAT版 Gemma4）：`reasoning_effort: "none"` だけが効いた（推論トークン 664→0、13.3秒→2.8秒、本文は正常）。reasoning_effort=low / reasoning={effort:none} / reasoning=off / chat_template_kwargs.enable_thinking=false / enable_thinking=false はいずれも推論が残る（400〜490トークン・8〜9秒）
+- 第2段（実装）：config.py に `REASONING_EFFORT = "none"`（推論しないモデルで不具合が出たら None にすれば送らない）。api.py の chat.completions.create 全9か所に `extra_body={"reasoning_effort": ...}` を付ける（LLM呼び出しは api.py に集約されている）。履歴は main と同じ役割つき messages のまま。fix/batch-title-empty-response のネイティブAPI方式はこれで置き換え（ブランチは残す）
+- 確認点：QAT版で空応答が出ないか・速度・主人公の位置や役割の追跡が main 並みか。非QAT の Gemma4 でエラーにならないか
 - VERSION はブランチ名（exp-qat-reasoning-off）。main へ取り込むときに戻す
 
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**

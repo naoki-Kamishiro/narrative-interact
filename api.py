@@ -1,7 +1,11 @@
 from openai import OpenAI
 import threading
 import time
-from config import LM_STUDIO_URL, API_KEY, MAX_TOKENS, TEMPERATURE
+from config import LM_STUDIO_URL, API_KEY, MAX_TOKENS, TEMPERATURE, REASONING_EFFORT
+
+# 推論（シンキング）するモデル（QAT版 Gemma4 等）で推論を止める。LM Studio の OpenAI互換APIでは
+# reasoning_effort="none" だけが効く（tools/check_reasoning_off.py で確認）。None なら送らない
+_REASONING_KW = {"extra_body": {"reasoning_effort": REASONING_EFFORT}} if REASONING_EFFORT else {}
 
 PLAYER_URL = LM_STUDIO_URL  # GMと同じポートを使用（同一モデルでGM・プレイヤー兼用）
 
@@ -41,6 +45,7 @@ def chat(messages: list) -> str:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
@@ -73,6 +78,7 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
         client = get_player_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=200,
             temperature=0.8,
@@ -113,6 +119,7 @@ def generate_genre_title(genre: str = "") -> dict:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=128,
             temperature=0.9,
@@ -151,6 +158,7 @@ def check_deviation(actions: list[str], plot_keywords: list[str]) -> bool:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=4,
             temperature=0.0,
@@ -212,6 +220,7 @@ def regenerate_plot(recent_history: list[dict], genre: str) -> str:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=1024,
             temperature=0.7,
@@ -245,6 +254,7 @@ def extract_protagonist_name(opening_scene: str) -> str:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=16,
             temperature=0.0,
@@ -285,6 +295,7 @@ def check_turning_point(recent_history: list[dict], action: str) -> bool:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=4,
             temperature=0.0,
@@ -335,6 +346,7 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=32,
             temperature=0.9,
@@ -359,6 +371,7 @@ def chat_json(messages: list) -> str:
         client = get_client()
         response = client.chat.completions.create(
             model="local",
+            **_REASONING_KW,
             messages=messages,
             max_tokens=4096,
             temperature=0.5,
