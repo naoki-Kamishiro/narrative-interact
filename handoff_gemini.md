@@ -257,6 +257,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+118a960 Merge experiment/qat-reasoning-off: 全LLM呼び出しで推論（シンキング）を止める（QAT版対応）
 525c037 Merge experiment/dice-wording: 判定強度の伝え方を整理し、GMに出目・難易度を渡さない
 d42d4f8 Merge experiment/epilogue-no-plot: エピローグ時はプロットを丸ごと見せない
 f348881 Merge experiment/epilogue-no-landing: エピローグ時は着地点・クライマックスを見せない
@@ -279,6 +280,6 @@ b32a145 Merge experiment/choice-beat: strongの選択ビート改善とクライ
 | prompt.py | SYSTEM_GM_BASE、SYSTEM_PLOT、PLOT_MODE_RULES、build_system_prompt() |
 | beat.py | ビートキュー・注入文テンプレート（_TEMPLATES） |
 | plot.py | プロット生成・正規化（_validate_and_repair） |
-| api.py | LM Studio API（chat、chat_player、GMの一言、転換点判定） |
+| api.py | LM Studio API（chat、chat_player、GMの一言、転換点判定）。全呼び出しに `reasoning_effort: "none"` を付けて推論（シンキング）を止める（config.py の `REASONING_EFFORT`。None で送らない）。OpenAI互換APIで効くのはこの指定だけ（tools/check_reasoning_off.py で確認。enable_thinking 等は効かない）。履歴は役割つき messages のまま |
 | state.py / history.py / save.py | 状態・会話履歴・セーブ/ロード |
 | display.py / dice.py / config.py | 表示・ダイス判定・接続設定 |

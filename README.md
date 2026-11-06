@@ -148,7 +148,10 @@ pip install -r requirements.txt  # openai / json-repair
 LM_STUDIO_URL = "http://localhost:1234/v1"  # LM StudioのデフォルトURL
 MAX_TOKENS    = 1024                         # 1回の生成で出力する最大トークン数
 TEMPERATURE   = 0.85
+REASONING_EFFORT = "none"                   # 推論（シンキング）を止める指定。QAT版など推論するモデルでも推論させない
 ```
+
+`REASONING_EFFORT` は推論するモデル（QAT版の Gemma4 など）の推論を止め、待ち時間とトークン消費を抑える。推論しない通常版でもそのままで動作する。問題が出た場合は `None` にすると指定を送らない。
 
 モデルIDの指定は不要（LM Studioはロード中のモデルを自動で使用する）。  
 コンテキスト長（32,768トークン以上を推奨）はLM Studio側のモデル設定で変更すること。

@@ -150,7 +150,10 @@ Set the LM Studio endpoint in `config.py`.
 LM_STUDIO_URL = "http://localhost:1234/v1"  # LM Studio's default URL
 MAX_TOKENS    = 1024                         # Maximum tokens output per generation
 TEMPERATURE   = 0.85
+REASONING_EFFORT = "none"                   # Turns off reasoning ("thinking"), even for models that reason, such as QAT builds
 ```
+
+`REASONING_EFFORT` stops reasoning in models that reason (such as the QAT build of Gemma4), cutting wait time and token use. It also works as-is with the regular non-reasoning build. If it causes problems, set it to `None` and the setting will not be sent.
 
 You do not need to specify a model ID (LM Studio automatically uses the loaded model).
 Change the context length (32,768 tokens or more recommended) in LM Studio's model settings.
