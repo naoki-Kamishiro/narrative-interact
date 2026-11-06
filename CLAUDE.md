@@ -171,7 +171,7 @@ python tools/check_reasoning_off.py # 推論オフの指定の確認（LM Studio
 - **off/adaptive の着地点を「目安」表示**（experiment/landing-guide、11/2）：strong 以外は「着地点の目安（…場面・人物を変えてよい）」
 - **エピローグ時はプロットを丸ごと見せない**（experiment/epilogue-no-landing → epilogue-no-plot、11/2〜11/3）：エピローグ生成時だけ、システムプロンプトの【プロット】（adaptive再生成後は【新プロット】）以降を除いて送る（`_epilogue_api_messages`）。表層ゴール由来の新しい出来事 0/4。本編の帰結として後日を描くのは仕様
 - **ログ評価テンプレートの共通化**（11/3）：handoff_gemini.md のテンプレートを Gemini・GPT 共通に（12B前提・仕様・既知の限界は別枠・指摘ごとにシステム／モデルの分類）
-- **判定強度の伝え方の整理**（experiment/dice-wording、11/5）：決定的成功は「この行動の目的を十分に達成」、重大な失敗は「明確な失敗」。300字目安の例外はクライマックス・エンディングのみ。GMに出目・難易度を渡さず `state.dice_log` に記録。決定的成功 6回中5回は行動の範囲内（大きく見える分は同ターンのビート進行）。重大な失敗は未検証
+- **判定強度の伝え方の整理**（experiment/dice-wording、11/5）：決定的成功は「この行動の目的を十分に達成」、重大な失敗は「明確な失敗」。300字目安の例外はクライマックス・エンディングのみ。GMに出目・難易度を渡さず `state.dice_log` に記録。決定的成功 6回中5回は行動の範囲内（大きく見える分は同ターンのビート進行）。重大な失敗は 26B-A4B のログで2回発生し、2回とも「明確な失敗＋小規模な障害1つ」に収まり連鎖なし
 - **自動プレイのGM応答エラー連続時の処理**（11/5・バグ修正）：GM応答エラーが `AUTO_GM_ERROR_LIMIT`（3）回続いたら `end_reason: "api_error"` で終了。同じターンのやり直しではGMの一言を作り直さない
 - **推論（シンキング）オフ対応**（experiment/qat-reasoning-off、11/6）：OpenAI互換APIで効くのは `reasoning_effort: "none"` だけ（tools/check_reasoning_off.py で確認、推論 664→0 トークン・13.3→2.8秒）。全LLM呼び出しに付与。履歴は役割つき messages のまま（ネイティブAPI版 fix/batch-title-empty-response は履歴を1テキストに潰すため置き換え）。通常版でも悪影響なし
 - **開始シーンに出た人物の登場ビートを完了扱い**（experiment/opening-char-beat、11/6）：strongで最初の1回だけ（`opening_chars_checked`）、応答に名前が出た未完了の登場ビートを完了に。5本で重複登場 0

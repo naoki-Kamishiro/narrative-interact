@@ -132,6 +132,7 @@ When the story's main conflict is resolved, the GM narrates the ending and the s
 - [LM Studio](https://lmstudio.ai/) (running as a local server)
 - Recommended model: Gemma4 12B (regular build)
   - The Gemma4 12B QAT build has also been tested. However, a single word in English or another language may slip into the text. This does not affect how the story progresses
+  - gemma-4-26B-A4B (IQ3_XXS) has also been tested
 - Recommended context length: 32,768 tokens or more (input side: about 10,000 tokens of system prompt plus the conversation history as the story progresses, about 30,000 tokens in total; output side: `MAX_TOKENS` is the cap for a single GM generation, and actual output is a few hundred to about 1,000 tokens)
 
 ## Setup
