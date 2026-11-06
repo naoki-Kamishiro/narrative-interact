@@ -999,6 +999,16 @@ improv/adaptive（再生成前）モードでLLM判定による転換点が多�
 - main.py（`_handle_gm_char_and_turning_point`）：gm_char_log に同じターン（user メッセージ通し番号）の一言がすでにあれば作り直さない（/retry はスナップショットで state を戻すので影響なし）
 - 通常の進行・strong の挙動は変わらない
 
+**実験ブランチ experiment/qat-reasoning-off（本流 main には未反映・2026年11月6日〜）**
+- 背景：ユーザーが別に作った fix/batch-title-empty-response（QAT版 Gemma4 対応）は、推論（シンキング）をオフにするため LM Studio ネイティブAPI（/api/v1/chat, reasoning: "off"）に切り替えたが、ネイティブAPIが assistant の役割を受け付けないため、履歴を【プレイヤー】【GM】の1テキストに潰して送っている。GMが自分の過去応答を自分の発言として扱えず、人物の位置・役割の追跡が弱まる懸念（手動プレイで主人公パパとママの立ち位置が食い違う例あり）。またそのブランチの chat_player は改行が "\\n"（文字のまま）になっている
+- ユーザーの方針：シンキングはさせない（待ち時間と無駄なトークン消費のため）。推論させて本文だけ取り出す方式は不可。役割つき messages のまま推論オフを実現したい
+- 調査：LM Studio の変更履歴では OpenAI互換で推論の強さを指定できるのは gpt-oss の一部のみ。bug tracker #1990 で OpenAI互換APIからの enable_thinking=false 等が効かない報告（Gemma v4 でも同様との書き込み）。回避策としてプロンプトテンプレートの差し替えが挙がっている
+- 第1段：tools/check_reasoning_off.py（OpenAI互換 /v1/chat/completions に役割つき複数ターンを送り、reasoning_effort・reasoning・chat_template_kwargs 等の候補ごとに推論の有無・トークン数・秒数を表示し、tools/check_reasoning_off_result.json に保存）。ユーザーが手元の LM Studio＋QAT版で実行し結果を貼る
+- 第1段の結果（ユーザーの LM Studio＋QAT版 Gemma4）：`reasoning_effort: "none"` だけが効いた（推論トークン 664→0、13.3秒→2.8秒、本文は正常）。reasoning_effort=low / reasoning={effort:none} / reasoning=off / chat_template_kwargs.enable_thinking=false / enable_thinking=false はいずれも推論が残る（400〜490トークン・8〜9秒）
+- 第2段（実装）：config.py に `REASONING_EFFORT = "none"`（推論しないモデルで不具合が出たら None にすれば送らない）。api.py の chat.completions.create 全9か所に `extra_body={"reasoning_effort": ...}` を付ける（LLM呼び出しは api.py に集約されている）。履歴は main と同じ役割つき messages のまま。fix/batch-title-empty-response のネイティブAPI方式はこれで置き換え（ブランチは残す）
+- 確認点：QAT版で空応答が出ないか・速度・主人公の位置や役割の追跡が main 並みか。非QAT の Gemma4 でエラーにならないか
+- VERSION はブランチ名（exp-qat-reasoning-off）。main へ取り込むときに戻す
+
 **--debug 手動プレイのセッションログ逐次保存（2026年11月1日）**
 - `--debug` の手動プレイでは、GM応答のたびに（開始シーン・通常ターン・/retry・/load 後）セッションログJSONを上書き保存する（`_autosave_debug_log`）。/quit や異常終了でもそこまでのログが残る
 - 保存先は1セッション中固定（`_session_log_path`）。新規開始・ロード・バッチの各回でリセット。エンディング時の保存も同じファイルに上書きされる
