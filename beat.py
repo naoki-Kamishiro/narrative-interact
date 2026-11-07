@@ -39,6 +39,8 @@ _TEMPLATES = {
     "character":     "{name}が現在地へ現れ、プレイヤーと接触すること。本文中で「{name}」という呼び名を明記すること。",
     # クライマックスビート（キューの最後に1つだけ追加）
     "climax":        "今回の描写で、クライマックスの場面を描くこと。舞台は{setting}。現在地が舞台と異なる場合は、無理に場所を移さず、現在地から舞台につながる形で場面を進めてよい。場面の再構成や処理内容の説明は書かないこと。対立は{conflict_type}。山場は「{peak}」。山場が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。主人公がその行動を取れる状況を目の前に整え、プレイヤーの行動がそれに当たる場合はその結果を描写すること。このターンでは物語を完結させず、【エンディング】は出力しないこと。",
+    # クライマックス2ターン目（山場の行動をプレイヤーが取る余地を残すための続き）
+    "climax_cont":   "クライマックスの場面が続いている。山場は「{peak}」。山場が主人公の行動を含む場合、GMが主人公の代わりにその行動を行ってはならない。プレイヤーの行動が山場に当たる場合はその結果を描写し、当たらない場合は対立を続けたまま、主人公が山場の行動を取れる状況を保つこと。このターンでは物語を完結させず、【エンディング】は出力しないこと。",
 }
 
 def build_queue(plot: dict) -> list:
@@ -156,6 +158,8 @@ def make_injection(beat: dict) -> str:
         text = tmpl.format(name=beat.get("name", ""))
     elif t == "choice":
         text = tmpl.format(content=beat.get("content", ""), cost=beat.get("cost", ""))
+    elif t == "climax" and beat.get("held"):
+        text = _TEMPLATES["climax_cont"].format(peak=beat.get("peak", ""))
     elif t == "climax":
         text = tmpl.format(setting=beat.get("setting", ""), conflict_type=beat.get("conflict_type", ""),
                            peak=beat.get("peak", ""))
@@ -255,6 +259,12 @@ def advance(queue: list, ptr: int, response: str) -> tuple[list, int]:
             # 未検出: doneのまま保留、次ターンも再注入
             _debug(f"[BEAT] character '{name}' not detected, re-injecting next turn")
             return queue, ptr
+    elif beat.get("type") == "climax" and not beat.get("held"):
+        # クライマックスは1回目の注入では完了にせず、次のターンも続きとして注入する
+        # （1回目は場を整えるだけで山場はプレイヤーの次の行動に委ねるため、即完了だと次ターンでエンディング誘導が入る）
+        queue[actual_idx]["held"] = True
+        _debug("[BEAT] climax held: continue next turn")
+        return queue, ptr
     else:
         # 出来事系は1回注入で信頼して進める
         queue[actual_idx]["done"] = True
