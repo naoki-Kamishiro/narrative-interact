@@ -257,6 +257,8 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+a9bc701 Merge experiment/climax-hold: クライマックスを2ターンにし、山場をプレイヤーの行動で起こせるようにする
+3a1a7af Merge experiment/gm-char-cynical: GMの一言を成り行きの皮肉を冷めた観察で述べる形に（20字・ジャンルを渡す）
 936dd21 Merge experiment/opening-char-beat: 開始シーンに出た人物の登場ビートを完了扱い
 118a960 Merge experiment/qat-reasoning-off: 全LLM呼び出しで推論（シンキング）を止める（QAT版対応）
 525c037 Merge experiment/dice-wording: 判定強度の伝え方を整理し、GMに出目・難易度を渡さない
