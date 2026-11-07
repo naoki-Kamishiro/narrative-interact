@@ -1,5 +1,7 @@
 """検証用にログから必要な部分だけを抜き出す（1本ごとに次の2つ）。
-  1. クライマックス前後（直前・クライマックス1・2・エンディング誘導1回目）の入力とGM応答
+  1. strong：クライマックス前後（直前・クライマックス1・2・エンディング誘導1回目）の入力とGM応答
+     adaptive：逸脱と判定したターン・新プロット・警告注入／再生成前後のターン、および終盤（エンディングとその直前）
+     off / improv：終盤（エンディングとその直前）
   2. 反転・誤認の内容と、それを説明していそうなNPCの台詞（ターン番号付き）
 使い方: python tools/extract_log.py "*_exp-xxx.json"  （ログのパターンを指定。省略時は今いるフォルダの *.json すべて）
 出力: 今いるフォルダの log_extract.txt（標準出力にも表示）。検証では Claude にこのファイルだけを渡す
@@ -36,24 +38,55 @@ def extract(path):
         turns.append((u, a))
         i += 2
     opening = h[1]["content"] if len(h) > 1 else ""
+    mode = st.get("plot_mode", "")
     cl = plot.get("climax") or {}
-    out = [f"=== {path}", f"ジャンル: {st.get('genre', '')}",
-           f"舞台(setting): {cl.get('setting', '')}", f"山場(peak): {cl.get('peak', '')}"]
-
-    # 1. クライマックス前後
-    out.append("■ クライマックス")
+    out = [f"=== {path}", f"モード: {mode} / ジャンル: {st.get('genre', '')} / 総ターン: {len(turns)}"]
     e = next((n for n, (_, a) in enumerate(turns, 1) if "【エンディング】" in a), None)
-    if e is None:
-        out.append("※【エンディング】が見つからない（未完）")
-    else:
-        first_end = e - st.get("post_prompt_count", 0)
-        c1 = first_end - 2
-        out.append(f"エンディング=T{e} / 誘導1回目=T{first_end} / クライマックス=T{c1},T{c1 + 1}")
-        labels = {c1 - 1: "直前", c1: "クライマックス1", c1 + 1: "クライマックス2", first_end: "誘導1回目"}
+
+    def show(labels):
         for n in sorted(labels):
             if 1 <= n <= len(turns):
                 u, a = turns[n - 1]
-                out += [f"--- T{n}（{labels[n]}）", f"[入力] {cut(u)}", f"[GM] {cut(a)}"]
+                out.extend([f"--- T{n}（{labels[n]}）", f"[入力] {cut(u)}", f"[GM] {cut(a)}"])
+
+    if mode == "strong":
+        # 1. クライマックス前後
+        out += [f"舞台(setting): {cl.get('setting', '')}", f"山場(peak): {cl.get('peak', '')}", "■ クライマックス"]
+        if e is None:
+            out.append("※【エンディング】が見つからない（未完）")
+        else:
+            first_end = e - st.get("post_prompt_count", 0)
+            c1 = first_end - 2
+            out.append(f"エンディング=T{e} / 誘導1回目=T{first_end} / クライマックス=T{c1},T{c1 + 1}")
+            show({c1 - 1: "直前", c1: "クライマックス1", c1 + 1: "クライマックス2", first_end: "誘導1回目"})
+    else:
+        # 1. 逸脱・再生成（adaptive）と終盤
+        labels = {}
+        if mode == "adaptive":
+            out.append("■ 逸脱・再生成")
+            dt = st.get("deviation_turns")
+            out.append(f"逸脱と判定したターン: {dt if dt is not None else '（記録なし：古い版のログ）'}"
+                       f" / 最大累積: {st.get('peak_deviation_count', 0)} / 再生成: {st.get('adaptive_replotted', False)}")
+            np_ = st.get("adaptive_new_plot") or {}
+            if np_:
+                out += [f"[新・目標] {np_.get('protagonist_goal', '')}",
+                        f"[新・クライマックス] {np_.get('climax_situation', '')}",
+                        f"[新・着地点] {np_.get('ending_scene', '')}"]
+                for b in np_.get("beats", []) or []:
+                    if isinstance(b, dict):
+                        out.append(f"[新・ビート] {b.get('timing', '')}: {b.get('description', '')}")
+            if dt and len(dt) >= 3:
+                labels[dt[2]] = "警告注入（累積3）"
+            if dt and len(dt) >= 5:
+                r = dt[4]
+                labels.update({r - 1: "再生成の直前", r: "再生成（新ビート注入）", r + 1: "再生成の次"})
+        out.append("■ 終盤")
+        if e is None:
+            out.append("※【エンディング】が見つからない（未完）")
+        else:
+            out.append(f"エンディング=T{e} / 誘導回数={st.get('post_prompt_count', 0)}")
+            labels.update({e - 1: "エンディングの直前", e: "エンディング"})
+        show(labels)
 
     # 2. 反転・誤認と、説明していそうな台詞
     out.append("■ 反転・誤認")

@@ -20,6 +20,7 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "beat_ptr": 0,
         "ending_suppressed": False,
         "deviation_count": 0,
+        "deviation_turns": [],
         "peak_deviation_count": 0,
         "adaptive_replotted": False,
         "gm_character": "none",

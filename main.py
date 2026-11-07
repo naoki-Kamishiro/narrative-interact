@@ -522,7 +522,10 @@ def _build_api_messages(h: list) -> list:
             keywords = _get_plot_keywords(plot)
             if check_deviation(recent, keywords):
                 deviation_count = s.get("deviation_count", 0) + 1
-                state.update({"deviation_count": deviation_count})
+                # ログ検証用: 逸脱と判定したターン（開始指示を除く入力の番号）を記録する。挙動には影響しない
+                dev_turn = sum(1 for m in h if m["role"] == "user") - 1
+                state.update({"deviation_count": deviation_count,
+                              "deviation_turns": s.get("deviation_turns", []) + [dev_turn]})
                 if DEBUG_MODE:
                     print(f"[ADAPTIVE] deviation_count={deviation_count}", file=sys.stderr)
 
