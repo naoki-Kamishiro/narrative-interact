@@ -257,6 +257,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+c2a5cd3 Merge experiment/plot-no-npc-fact: 【プロット】節からNPCに事実を言わせてよいという前半を外し、反転の第三者解説を解消
 95a2d87 Merge experiment/climax-no-warp: クライマックスの注入文で現在地を主にし、舞台を目安にする（強制移動の解消）
 98598a6 Merge experiment/twist-no-npc-fact: 反転・誤認ビートの注入文から「事実はNPCが台詞で言ってよい」を外し、システムプロンプトの禁止との矛盾を解消
 a9bc701 Merge experiment/climax-hold: クライマックスを2ターンにし、山場をプレイヤーの行動で起こせるようにする

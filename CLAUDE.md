@@ -17,7 +17,7 @@ LM Studio用インタラクティブフィクションシステム。
   2. 下の「修正履歴」付近に「実験ブランチ experiment/xxx（本流 main には未反映）」の節を書く（背景・変更・確認点）
   3. push して、ユーザーに ZIP 名（narrative-interact-experiment-xxx）と、回すモード・本数を伝える。ユーザーが LM Studio＋Gemma4 12B で回し、JSONログをアップロードする（ほかのLLM＝GPT等の評価を貼ることもある。鵜呑みにせずログで照合する）
   4. ログを分析して報告。取り込むかは**ユーザーが決める**
-- 取り込みの手順（ユーザー承認後）：main で `git merge --no-ff experiment/xxx` → VERSION をマージ前の main の値に戻す → CLAUDE.md の実験ブランチの節を「→ 〇月〇日に main へ取り込み・ユーザー承認済み」に書き換え結果を追記 → handoff_gemini.md（仕様・検証結果・限界・取り込み履歴）と README.md / README_EN.md（モデル限界の欄）を必要に応じて更新 → push。**ブランチは削除せず残す**
+- 取り込みの手順（ユーザー承認後）：main で `git merge --no-ff experiment/xxx` → VERSION をマージ前の main の値に戻す → CLAUDE.md の実験ブランチの節を「→ 〇月〇日に main へ取り込み・ユーザー承認済み」に書き換え結果を追記 → handoff_gemini.md（仕様・検証結果・限界・取り込み履歴）と README.md / README_EN.md（モデル限界の欄）を必要に応じて更新 → push → 取り込み後に実験ブランチを削除する（内容はマージコミットに残る）。見送り・保留のブランチは残す
 - main の VERSION は GitHub Actions が push のたびにコミットハッシュへ自動更新する。push が rejected になったら `git pull --rebase` してから push し直す
 - handoff_gemini.md・CLAUDE.md は git 管理に含める。README_EN.md は README.md と内容を揃える
 
@@ -158,7 +158,7 @@ python tools/check_reasoning_off.py # 推論オフの指定の確認（LM Studio
 
 ## main への主な変更（2026年11月〜）
 
-各項目の詳細な経緯・段階ごとの数値は、整理前のこのファイル（commit 8a33a55 時点の CLAUDE.md）を参照。実験ブランチは取り込み後も削除せず残している。
+各項目の詳細な経緯・段階ごとの数値は、整理前のこのファイル（commit 8a33a55 時点の CLAUDE.md）を参照。取り込み済みの実験ブランチは削除している（11/7 に整理）。
 
 - **選択ビート改善**（experiment/choice-beat、11/1）：プロット生成の choices を「主人公が直面する二択の局面」に。strongで選択ビート消化の次の1ターンを保留ターン（`choice_hold`、次ビートを注入せず選択への応答として結果を描く。完結・着地点描写はさせない）。climax をクライマックスビートとしてキュー末尾に追加（現在地が舞台と違えば無理に移さない）
 - **登場判定のカナ同一視**（11/1）：`detect_character` でカタカナをひらがなに変換して照合（再注入の上限は不採用）
