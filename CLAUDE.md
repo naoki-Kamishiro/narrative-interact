@@ -17,7 +17,7 @@ LM Studio用インタラクティブフィクションシステム。
   2. 下の「修正履歴」付近に「実験ブランチ experiment/xxx（本流 main には未反映）」の節を書く（背景・変更・確認点）
   3. push して、ユーザーに ZIP 名（narrative-interact-experiment-xxx）と、回すモード・本数を伝える。ユーザーが LM Studio＋Gemma4 12B で回し、JSONログをアップロードする（ほかのLLM＝GPT等の評価を貼ることもある。鵜呑みにせずログで照合する）
   4. ログを分析して報告。取り込むかは**ユーザーが決める**
-- 取り込みの手順（ユーザー承認後）：main で `git merge --no-ff experiment/xxx` → VERSION をマージ前の main の値に戻す → CLAUDE.md の実験ブランチの節を「→ 〇月〇日に main へ取り込み・ユーザー承認済み」に書き換え結果を追記 → handoff_gemini.md（仕様・検証結果・限界・取り込み履歴）と README.md / README_EN.md（モデル限界の欄）を必要に応じて更新 → push → 取り込み後に実験ブランチを削除する（内容はマージコミットに残る）。見送り・保留のブランチは残す
+- 取り込みの手順（ユーザー承認後）：main で `git merge --no-ff experiment/xxx` → VERSION をマージ前の main の値に戻す → CLAUDE.md の実験ブランチの節を「→ 〇月〇日に main へ取り込み・ユーザー承認済み」に書き換え結果を追記 → handoff_gemini.md（仕様・検証結果・限界・取り込み履歴）と README.md / README_EN.md（モデル限界の欄）を必要に応じて更新 → push → 取り込み後に実験ブランチを削除する（内容はマージコミットに残る）。削除はユーザーが行う（Claude の環境からはブランチ削除がプロキシで拒否される〔HTTP 403〕ため、Claude は削除するブランチ名と `git push origin --delete <ブランチ名>` を伝える）。見送り・保留のブランチは残す
 - main の VERSION は GitHub Actions が push のたびにコミットハッシュへ自動更新する。push が rejected になったら `git pull --rebase` してから push し直す
 - handoff_gemini.md・CLAUDE.md は git 管理に含める。README_EN.md は README.md と内容を揃える
 
