@@ -257,6 +257,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+98598a6 Merge experiment/twist-no-npc-fact: 反転・誤認ビートの注入文から「事実はNPCが台詞で言ってよい」を外し、システムプロンプトの禁止との矛盾を解消
 a9bc701 Merge experiment/climax-hold: クライマックスを2ターンにし、山場をプレイヤーの行動で起こせるようにする
 3a1a7af Merge experiment/gm-char-cynical: GMの一言を成り行きの皮肉を冷めた観察で述べる形に（20字・ジャンルを渡す）
 936dd21 Merge experiment/opening-char-beat: 開始シーンに出た人物の登場ビートを完了扱い
