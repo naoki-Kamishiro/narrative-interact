@@ -183,9 +183,9 @@ If you use auto-play for research or observation, genres with exploration and pu
 
 ---
 
-## Model limitations (compromises with Gemma4 12B)
+## Known limitations (compromises with Gemma4 12B)
 
-These may improve with a more capable model.
+Larger models (gemma-4-26B-A4B, gemma-4-31B-it) keep the prose style better, but most of the issues below still appear.
 
 **Mitigation implemented (still occurs probabilistically)**
 
