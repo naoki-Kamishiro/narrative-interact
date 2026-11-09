@@ -75,6 +75,11 @@ def extract(path):
                 for b in np_.get("beats", []) or []:
                     if isinstance(b, dict):
                         out.append(f"[新・ビート] {b.get('timing', '')}: {b.get('description', '')}")
+            # 全ターンのプレイヤー入力（1行目のみ・判定タグを除く）。逸脱判定の印付き
+            dts = set(dt or [])
+            for n, (u, _) in enumerate(turns, 1):
+                first = (u or "").split("\n")[0].strip()
+                out.append(f"{'★' if n in dts else '　'}T{n}: {first[:80]}")
             if dt and len(dt) >= 3:
                 labels[dt[2]] = "警告注入（累積3）"
             if dt and len(dt) >= 5:
