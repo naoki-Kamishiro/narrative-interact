@@ -306,29 +306,32 @@ def build_system_prompt(plot: dict, plot_mode: str = "off", genre: str = "") -> 
     elif genre:
         lines.append(f"- ジャンル「{genre}」の読み手にとって自然な語り口・語彙の硬さ・文の長さで書く。そのジャンルの読み手に難しい言葉や、抽象的で文語的な言い回しは使わない")
 
-    lines.append("【ジャンル制約】")
+    # genre_traits はプロット由来。即興（プロットなし）では空になり、既定値で
+    # 「敵は実際に攻撃」「プロットにない謎を出さない」がジャンルを問わず入っていたため出さない
+    if traits:
+        lines.append("【ジャンル制約】")
 
-    if not traits.get("combat", True):
-        lines.append("- このジャンルでは戦闘・脅威・敵の出現は原則禁止。物語に登場させない")
-    else:
-        lines.append("- 対立するNPC・敵は受動的な脅威の提示に留めず、実際に攻撃を行い、その結果として主人公が損害を受ける可能性がある描写を含めること")
+        if not traits.get("combat", True):
+            lines.append("- このジャンルでは戦闘・脅威・敵の出現は原則禁止。物語に登場させない")
+        else:
+            lines.append("- 対立するNPC・敵は受動的な脅威の提示に留めず、実際に攻撃を行い、その結果として主人公が損害を受ける可能性がある描写を含めること")
 
-    if not traits.get("mystery", True):
-        lines.append("- このジャンルでは謎解き要素は不要。プロットにない謎を出さない")
-    else:
-        lines.append("- プロットにない謎を出さない")
+        if not traits.get("mystery", True):
+            lines.append("- このジャンルでは謎解き要素は不要。プロットにない謎を出さない")
+        else:
+            lines.append("- プロットにない謎を出さない")
 
-    if not traits.get("exploration", True):
-        lines.append("- このジャンルでは探索要素は不要")
+        if not traits.get("exploration", True):
+            lines.append("- このジャンルでは探索要素は不要")
 
-    if not traits.get("inventory", True):
-        lines.append("- このジャンルでは所持品の概念は存在しない。所持品を聞かれても管理しない")
+        if not traits.get("inventory", True):
+            lines.append("- このジャンルでは所持品の概念は存在しない。所持品を聞かれても管理しない")
 
-    if traits.get("romance", False):
-        lines.append("- 登場キャラクターとの関係性・感情の変化を丁寧に描写する")
+        if traits.get("romance", False):
+            lines.append("- 登場キャラクターとの関係性・感情の変化を丁寧に描写する")
 
-    if traits.get("comedy", False):
-        lines.append("- ユーモアや軽妙なやりとりを積極的に取り入れる")
+        if traits.get("comedy", False):
+            lines.append("- ユーモアや軽妙なやりとりを積極的に取り入れる")
 
         # プロット情報をシステムプロンプトへ注入
     if plot:
