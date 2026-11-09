@@ -73,7 +73,7 @@ Finally, choose whether the GM one-liner is on or off.
 Each mode differs in how strongly the plot constrains the GM. The same player actions can lead to very different endings depending on the mode. This difference is intentional by design.
 
 - **Strict**: The system injects a beat (a story milestone) into the GM every turn and forces the plot to be resolved. After a choice is posed, the next turn is spent narrating the result of that choice, and the climax scene is narrated over two turns before the story heads to its ending
-- **Adaptive**: Deviation is checked every turn. After a cumulative 3 deviation judgments, an instruction encouraging convergence is injected; after a cumulative 5, the LLM regenerates a new plot and beat control guides the story to a landing (the count is not reset by turns without deviation)
+- **Adaptive**: Deviation is checked every turn. After a cumulative 3 deviation judgments, an instruction encouraging convergence is injected; after a cumulative 5, the LLM regenerates a new plot and beat control guides the story to a landing (the count is not reset by turns without deviation). If the player keeps deviating from the start, the story finishes soon after regeneration and ends up short (by design)
 - **Free**: The plot is only passed to the GM as reference in the system prompt; no beats are injected. Deviation is never forced back
 - **Improv**: No plot generation and no beat injection; the story advances on the GM's output alone
 
@@ -169,7 +169,7 @@ A mode where an LLM also handles the player's input. Used for prompt verificatio
 
 ```bash
 python main.py --normal           # Normal mode
-python main.py --deviate          # Deviate mode (actions that deliberately go beyond GM constraints)
+python main.py --deviate          # Deviate mode (actions that leave the story, such as ignoring the GM's lead and changing location)
 python main.py --debug            # Manual play with debug output (the session log is overwritten as JSON after every action)
 python main.py --normal --batch 5   # Batch run (5 consecutive runs with random genres and titles)
 python main.py --deviate --batch 5  # Batch run in deviate mode
@@ -199,6 +199,8 @@ Larger models (gemma-4-26B-A4B, gemma-4-31B-it) keep the prose style better, but
 - **Skipping the hook closing**: The closing of the opening hook (hook.closing) is not narrated in the ending
 - **Forced jumps to the landing point**: In free and adaptive modes, abruptly brings in characters who never appeared or distant places to match the landing point
 - **Acting out the peak**: In strong mode, the GM writes the protagonist's peak action that is not in the input
+- **Warping to the climax**: In strong mode, carries the protagonist to the climax setting via a flash of light or a collapse
+- **Revealing twists**: A third-party NPC explains a plot twist at length in dialogue
 
 **Remaining constraints (still occur at some frequency after mitigation)**
 
@@ -206,7 +208,8 @@ Larger models (gemma-4-26B-A4B, gemma-4-31B-it) keep the prose style better, but
 - **Anticipating the landing point**: Uses motive or theme words from the plot's ending before the ending. Common in mystery
 - **Exceeding the length guideline**: Ignores the 300-character-per-turn guideline, sometimes by a lot depending on genre
 - **Copying the landing point**: Copies the plot's landing-point text almost verbatim at the close of the ending
-- **Location jumps at the climax**: In strong mode, jumps abruptly from the current location to the climax setting ("the scenery rewrites itself")
+- **Rewriting the location at the climax**: In strong mode, the scenery at the current location turns into the climax setting ("the walls crumble and it transforms into a plaza")
+- **Repeated closing scene**: Finishes the closing scene but forgets the ending marker, then writes the same scene again the next turn
 - **Reading intent into the hold turn**: In strong mode, on the turn after a choice is posed, interprets the action as "a sign of resolve" in narration or NPC dialogue
 
 **Model-dependent (full resolution depends on the model's ability)**
