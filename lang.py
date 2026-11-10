@@ -25,7 +25,7 @@ EN_PLOT_LINE = (
 )
 
 # 英語のときだけ自動プレイのプレイヤーに足す1行
-EN_PLAYER_LINE = "行動は英語（English）で書くこと。"
+EN_PLAYER_LINE = "行動は英語（English）で、主語を省いた命令形で書くこと（例：Walk to the door.）。"
 
 # 英語のときだけバッチのジャンル・タイトル生成に足す1行
 EN_GENRE_TITLE_LINE = "ジャンル名・タイトルは英語（English）で書くこと。"
