@@ -866,7 +866,7 @@ def _handle_gm_char_and_turning_point(action: str, h: list) -> None:
         if comment:
             gm_char_print(comment)
             if DEBUG_MODE:
-                label = GM_CHAR_LABELS.get(gm_character, gm_character)
+                label = _lang.t(GM_CHAR_LABELS.get(gm_character, gm_character), gm_character)
                 print(f"[GM_CHAR] {label}: {comment}", file=sys.stderr)
             # コメントをstateに蓄積（JSONログに残す）
             s = state.get()

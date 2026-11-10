@@ -13,6 +13,8 @@ def _debug(*args) -> None:
     if DEBUG_MODE:
         print(*args, file=sys.stderr)
 
+import lang as _lang
+
 # timingのソート辞書（表記ゆれ吸収）
 TIMING_ORDER = {
     "序盤": 0,
@@ -215,7 +217,7 @@ def inject(messages: list, queue: list, ptr: int) -> tuple[list, str | None]:
             break
 
     beat_type = beat.get("type", "adaptive")
-    debug = f"[BEAT] ptr={ptr} type={beat_type} timing={beat.get('timing', '-')}"
+    debug = f"[BEAT] ptr={ptr} type={beat_type} timing={_lang.timing_label(beat.get('timing', '-'))}"
     return msgs, debug
 
 

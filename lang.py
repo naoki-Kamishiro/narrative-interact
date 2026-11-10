@@ -34,6 +34,15 @@ EN_PLAYER_LINE = "行動は英語（English）で、主語を省いた命令形�
 EN_GENRE_TITLE_LINE = "ジャンル名・タイトルは英語（English）で書くこと。"
 
 
+# ビートのタイミング（内部の値は日本語のまま）の表示用の英語名
+TIMING_EN = {"序盤": "early", "中盤": "middle", "終盤": "late", "クライマックス直前": "before climax", "クライマックス": "climax", "エンディング": "ending"}
+
+
+def timing_label(t: str) -> str:
+    """デバッグ表示などでタイミングを出すとき用。英語なら英語名に訳す。"""
+    return TIMING_EN.get(t, t) if is_en() else t
+
+
 def is_en() -> bool:
     return LANG == "en"
 
