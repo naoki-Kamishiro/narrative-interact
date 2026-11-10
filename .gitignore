@@ -10,3 +10,4 @@ build/
 saves/
 *.json
 log_extract.txt
+logs/

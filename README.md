@@ -168,7 +168,7 @@ REASONING_EFFORT = "none"                   # 推論（シンキング）を止�
 ```bash
 python main.py --normal           # 通常モード
 python main.py --deviate          # 逸脱モード（GMの誘導を無視して場所を変えるなど、筋から外れる行動）
-python main.py --debug            # 手動プレイ＋デバッグ出力あり（セッションログを1行動ごとにJSONで上書き保存）
+python main.py --debug            # 手動プレイ＋デバッグ出力あり（セッションログを1行動ごとに logs/ フォルダへJSONで上書き保存）
 python main.py --normal --batch 5   # バッチ実行（ランダムなジャンル・タイトルで5回連続）
 python main.py --deviate --batch 5  # 逸脱モードでバッチ実行
 ```

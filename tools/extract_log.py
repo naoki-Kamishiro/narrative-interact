@@ -111,8 +111,14 @@ def extract(path):
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:] or ["*.json"]
-    files = sorted({p for a in args for p in glob.glob(a, recursive=True)})
+    args = sys.argv[1:] or ["logs/*.json"]
+    files = set()
+    for a in args:
+        hit = glob.glob(a, recursive=True)
+        if not hit and not a.startswith("logs"):
+            hit = glob.glob("logs/" + a, recursive=True)  # ログは logs/ に保存される
+        files.update(hit)
+    files = sorted(files)
     if not files:
         print(f"ログが見つかりません: {args}（ログのあるフォルダで実行するか、パスを指定してください）")
         sys.exit(1)

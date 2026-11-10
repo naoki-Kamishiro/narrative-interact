@@ -898,6 +898,7 @@ def start_new_game() -> tuple[list, str, str, str]:
             plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
+    state.update({"plot_gen": dict(plot_mod.LAST_GEN) if plot_mode != "improv" else {}})
     state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset,
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": gm_character})
@@ -1036,7 +1037,9 @@ def save_session_json(h: list, title: str, quiet: bool = False) -> None:
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     first_save = _session_log_path is None
     if first_save:
-        _session_log_path = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
+        _logs_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "logs")
+        _os.makedirs(_logs_dir, exist_ok=True)
+        _session_log_path = _os.path.join(_logs_dir, f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json")
     filename = _session_log_path
     data = {
         "state": state.get(),
@@ -1163,6 +1166,7 @@ def run_single_session(plot_mode: str) -> None:
             plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
+    state.update({"plot_gen": dict(plot_mod.LAST_GEN) if plot_mode != "improv" else {}})
     state.update({"use_dice": BATCH_USE_DICE, "difficulty_preset": difficulty_preset,
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": BATCH_GM_CHARACTER})
