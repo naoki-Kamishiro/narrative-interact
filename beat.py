@@ -21,6 +21,20 @@ TIMING_ORDER = {
     "クライマックス": 3,
 }
 
+# timing の表記ゆれ・英語表記を内部の値に揃える（英語版でプロットが英語の値を返した場合の保険）
+_TIMING_ALIASES = {
+    "early": "序盤", "beginning": "序盤", "opening": "序盤",
+    "middle": "中盤", "mid": "中盤", "midpoint": "中盤",
+    "before climax": "クライマックス直前", "pre-climax": "クライマックス直前", "クライマックス直目": "クライマックス直前",
+    "climax": "クライマックス",
+}
+
+
+def _norm_timing(t, default):
+    t = (t or default).strip() if isinstance(t, str) else default
+    return _TIMING_ALIASES.get(t.lower(), _TIMING_ALIASES.get(t, t))
+
+
 # 二次ソート: ビート種別の優先順
 TYPE_ORDER = {
     "misconception": 0,
@@ -54,7 +68,7 @@ def build_queue(plot: dict) -> list:
             "src": "misconceptions",
             "src_idx": i,
             "type": "misconception",
-            "timing": item.get("timing", "序盤"),
+            "timing": _norm_timing(item.get("timing"), "序盤"),
             "content": item.get("content", ""),
             "done": False,
         })
@@ -66,7 +80,7 @@ def build_queue(plot: dict) -> list:
             "src": "failures",
             "src_idx": i,
             "type": "failure",
-            "timing": item.get("timing", "序盤"),
+            "timing": _norm_timing(item.get("timing"), "序盤"),
             "content": item.get("content", ""),
             "done": False,
         })
@@ -78,7 +92,7 @@ def build_queue(plot: dict) -> list:
             "src": "choices",
             "src_idx": i,
             "type": "choice",
-            "timing": item.get("timing", "中盤"),
+            "timing": _norm_timing(item.get("timing"), "中盤"),
             "content": item.get("description", ""),
             "cost": item.get("cost", ""),
             "done": False,
@@ -91,7 +105,7 @@ def build_queue(plot: dict) -> list:
             "src": "twists",
             "src_idx": i,
             "type": "twist",
-            "timing": item.get("timing", "中盤"),
+            "timing": _norm_timing(item.get("timing"), "中盤"),
             "content": item.get("content", ""),
             "done": False,
         })

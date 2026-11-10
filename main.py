@@ -128,6 +128,12 @@ BATCH_GENRES = [
     "時代劇", "現代ドラマ", "サスペンス", "青春",
     "怪談", "冒険", "犯罪", "日常",
 ]
+# 英語版（--lang en）のバッチ用ジャンル。上の一覧と同じ並びの英語圏のジャンル名
+BATCH_GENRES_EN = [
+    "Horror", "Mystery", "Fantasy", "Sci-Fi",
+    "Historical", "Contemporary drama", "Suspense", "Coming-of-age",
+    "Ghost story", "Adventure", "Crime", "Slice of life",
+]
 _batch_genre_queue: list[str] = []  # シャッフル済みキュー
 
 # バッチ用ダイス設定（開始前に1回だけ手入力）
@@ -892,6 +898,7 @@ def start_new_game() -> tuple[list, str, str, str]:
             plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
+    state.update({"plot_gen": dict(plot_mod.LAST_GEN) if plot_mode != "improv" else {}})
     state.update({"use_dice": use_dice, "difficulty_preset": difficulty_preset,
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": gm_character})
@@ -1030,7 +1037,9 @@ def save_session_json(h: list, title: str, quiet: bool = False) -> None:
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     first_save = _session_log_path is None
     if first_save:
-        _session_log_path = f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json"
+        _logs_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "logs")
+        _os.makedirs(_logs_dir, exist_ok=True)
+        _session_log_path = _os.path.join(_logs_dir, f"{safe_title}_{play_mode}_{timestamp}_{commit_hash}.json")
     filename = _session_log_path
     data = {
         "state": state.get(),
@@ -1116,7 +1125,9 @@ def _pick_batch_genre() -> str:
     """バッチ用ジャンルキューから次のジャンルを取り出す。空になったら再シャッフル。"""
     global _batch_genre_queue
     if not _batch_genre_queue:
-        _batch_genre_queue = random.sample(BATCH_GENRES, len(BATCH_GENRES))
+        import lang as _lang
+        _genres = BATCH_GENRES_EN if _lang.is_en() else BATCH_GENRES
+        _batch_genre_queue = random.sample(_genres, len(_genres))
     return _batch_genre_queue.pop(0)
 
 
@@ -1155,6 +1166,7 @@ def run_single_session(plot_mode: str) -> None:
             plot_mode = "improv"
 
     state.init(genre, title, plot, plot_mode)
+    state.update({"plot_gen": dict(plot_mod.LAST_GEN) if plot_mode != "improv" else {}})
     state.update({"use_dice": BATCH_USE_DICE, "difficulty_preset": difficulty_preset,
                   "auto_play_mode": AUTO_PLAY_MODE or "manual",
                   "gm_character": BATCH_GM_CHARACTER})
@@ -1289,10 +1301,17 @@ def main():
         print("  --normal         自動プレイ（通常）")
         print("  --deviate        自動プレイ（逸脱）")
         print("  --batch N        N回バッチ実行（--normal または --deviate と併用）")
+        print("  --lang en        GMの出力を英語にする（試作。UIは日本語のまま）")
         print("  --debug          デバッグ出力を有効化（stderrに出力）")
         print("  --help, -h       このヘルプを表示")
         sys.exit(0)
 
+    # 出力言語（英語版の試作）: --lang en
+    if "--lang" in sys.argv:
+        _i = sys.argv.index("--lang")
+        if _i + 1 < len(sys.argv) and sys.argv[_i + 1] in ("ja", "en"):
+            import lang as _lang
+            _lang.LANG = sys.argv[_i + 1]
     if "--normal" in sys.argv:
         AUTO_PLAY_MODE = "normal"
     elif "--deviate" in sys.argv:

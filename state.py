@@ -3,6 +3,7 @@
 フルスナップショット管理。更新は必ずupdate()経由。
 将来的にengine.pyがここを通じて状態を制御する。
 """
+import lang as _lang
 
 _state: dict = {}
 
@@ -21,6 +22,7 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "ending_suppressed": False,
         "deviation_count": 0,
         "deviation_turns": [],
+        "lang": _lang.LANG,
         "peak_deviation_count": 0,
         "adaptive_replotted": False,
         "gm_character": "none",

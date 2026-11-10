@@ -37,6 +37,9 @@ def _show_progress(stop_event: threading.Event) -> None:
     sys.stdout.write("\r" + " " * 20 + "\r")
     sys.stdout.flush()
 
+import lang as _lang
+
+
 def chat(messages: list) -> str:
     stop_event = threading.Event()
     t = threading.Thread(target=_show_progress, args=(stop_event,), daemon=True)
@@ -46,7 +49,7 @@ def chat(messages: list) -> str:
         response = client.chat.completions.create(
             model="local",
             **_REASONING_KW,
-            messages=messages,
+            messages=_lang.localize(messages),
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
         )
@@ -70,6 +73,8 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
             f"【直近の自分の行動（繰り返し禁止の参考に）】\n{actions_text}\n\n"
             f"【現在の状況】\n{gm_response}"
         )
+    if _lang.is_en():
+        system_prompt = system_prompt + "\n" + _lang.EN_PLAYER_LINE
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user",   "content": user_content},
@@ -109,6 +114,8 @@ def generate_genre_title(genre: str = "") -> dict:
             "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
             '{"genre": "ジャンル名", "title": "タイトル"}'
         )
+    if _lang.is_en():
+        prompt = _lang.localize_text(prompt) + "\n" + _lang.EN_GENRE_TITLE_LINE
     messages = [
         {"role": "system", "content": "あなたは創作のアイデアを提案するアシスタントです。"},
         {"role": "user", "content": prompt},
@@ -373,7 +380,7 @@ def chat_json(messages: list) -> str:
         response = client.chat.completions.create(
             model="local",
             **_REASONING_KW,
-            messages=messages,
+            messages=_lang.localize(messages),
             max_tokens=4096,
             temperature=0.5,
         )

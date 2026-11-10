@@ -15,13 +15,29 @@ DEBUG_MODE: bool = False
 
 MAX_RETRIES = 3
 
+import lang as _lang
+
+# ログ検証用: 直近のプロット生成の試行回数と修復内容（main が state の plot_gen に記録する）
+LAST_GEN: dict = {"attempts": 0, "repairs": []}
+
+
+def _note_repair(msg: str) -> None:
+    if DEBUG_MODE:
+        print(f"[plot修復] {msg}", file=sys.stderr)
+    LAST_GEN["repairs"].append(msg)
+
+
 def generate(genre: str, title: str) -> dict:
     system_print("プロットを生成中...")
+    LAST_GEN["attempts"] = 0
+    LAST_GEN["repairs"] = []
     messages = [
         {"role": "system", "content": SYSTEM_PLOT},
-        {"role": "user",   "content": build_plot_message(genre, title)},
+        {"role": "user",   "content": build_plot_message(genre, title)
+                                    + ("\n" + _lang.EN_PLOT_LINE if _lang.is_en() else "")},
     ]
     for attempt in range(1, MAX_RETRIES + 1):
+        LAST_GEN["attempts"] = attempt
         raw = chat_json(messages)
         result = _parse(raw)
         if result and all(result.get(k) for k in ("ending", "protagonist", "characters", "climax")):
@@ -115,8 +131,7 @@ def _validate_and_repair(plot: dict) -> dict:
                 if not isinstance(existing, list):
                     existing = []
                 plot[key] = existing + extracted[key]
-                if DEBUG_MODE:
-                    print(f"[plot修復] {key} を {len(extracted[key])} 件トップレベルに移動しました", file=sys.stderr)
+                _note_repair(f"{key} を {len(extracted[key])} 件トップレベルに移動しました")
 
     # protagonist が文字列など dict でない場合は dict に変換
     if not isinstance(plot.get("protagonist"), dict):
@@ -169,8 +184,7 @@ def _validate_and_repair(plot: dict) -> dict:
         climax["gain"] = climax.get("gain") or protagonist.get("goal_surface") or ""
         climax["peak"] = climax.get("peak") or final_twist or "物語の転換点"
         plot["climax"] = climax
-        if DEBUG_MODE:
-            print("[plot修復] climax が空だったため他フィールドから補完しました", file=sys.stderr)
+        _note_repair("climax が空だったため他フィールドから補完しました")
     # ending が dict / list で返った場合は文字列に正規化する
     # （そのままだと GMへのプロンプトに {'scene_description': ...} のような表記が入る）
     # dict の中に ending_note 相当（フック回収・テーマの決着）が混ざっている場合は ending_note へ振り分け、
@@ -203,27 +217,22 @@ def _validate_and_repair(plot: dict) -> dict:
         plot["ending"] = " ".join(scene_vals)
         if note:
             plot["ending_note"] = {"hook_resolution": note.get("hook_resolution", ""), "theme_closure": note.get("theme_closure", "")}
-        if DEBUG_MODE:
-            print("[plot修復] ending が dict だったため情景を文字列に、注記を ending_note に振り分けました", file=sys.stderr)
+        _note_repair("ending が dict だったため情景を文字列に、注記を ending_note に振り分けました")
     elif isinstance(ending, list):
         plot["ending"] = " ".join(str(v).strip() for v in ending if isinstance(v, (str, int, float)) and str(v).strip())
-        if DEBUG_MODE:
-            print("[plot修復] ending が list だったため文字列に変換しました", file=sys.stderr)
+        _note_repair("ending が list だったため文字列に変換しました")
     if not plot.get("ending"):
         plot["ending"] = ""
-        if DEBUG_MODE:
-            print("[plot修復] ending が欠落していたためデフォルト補完しました", file=sys.stderr)
+        _note_repair("ending が欠落していたためデフォルト補完しました")
     # 主人公が characters に含まれていない場合は先頭に追加する（GMに渡す登場人物一覧から主人公が抜けないように）
     prot_name = plot.get("protagonist", {}).get("name", "") if isinstance(plot.get("protagonist"), dict) else ""
     if prot_name and isinstance(plot.get("characters"), list):
         if not any(isinstance(c, dict) and c.get("name") == prot_name for c in plot["characters"]):
             role = plot["protagonist"].get("goal_surface", "") or "主人公"
             plot["characters"].insert(0, {"name": prot_name, "role": role})
-            if DEBUG_MODE:
-                print("[plot修復] 主人公が characters に無かったため追加しました", file=sys.stderr)
+            _note_repair("主人公が characters に無かったため追加しました")
     if not isinstance(plot.get("ending_note"), dict) or not plot["ending_note"]:
         plot["ending_note"] = {"hook_resolution": "", "theme_closure": ""}
-        if DEBUG_MODE:
-            print("[plot修復] ending_note が欠落していたためデフォルト補完しました", file=sys.stderr)
+        _note_repair("ending_note が欠落していたためデフォルト補完しました")
 
     return plot
