@@ -6,6 +6,7 @@ state + history を同期して保存する。
 
 import json
 from config import SAVE_FILE
+import lang as _lang
 from display import system_print, error_print
 
 SAVE_VERSION = 1
@@ -19,9 +20,9 @@ def save(state: dict, history: list, filepath: str = SAVE_FILE) -> None:
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        system_print(f"セーブしました: {filepath}")
+        system_print(_lang.t(f"セーブしました: {filepath}", f"Saved: {filepath}"))
     except Exception as e:
-        error_print(f"セーブ失敗: {e}")
+        error_print(_lang.t(f"セーブ失敗: {e}", f"Save failed: {e}"))
 
 def load(filepath: str = SAVE_FILE) -> tuple[dict | None, list | None]:
     try:
@@ -29,13 +30,14 @@ def load(filepath: str = SAVE_FILE) -> tuple[dict | None, list | None]:
             data = json.load(f)
         version = data.get("version", 0)
         if version != SAVE_VERSION:
-            error_print(f"セーブデータのバージョンが異なります（v{version} → v{SAVE_VERSION}）。ロードできません。")
+            error_print(_lang.t(f"セーブデータのバージョンが異なります（v{version} → v{SAVE_VERSION}）。ロードできません。",
+                                f"Save data version mismatch (v{version} → v{SAVE_VERSION}). Cannot load."))
             return None, None
         return data.get("state"), data.get("history")
     except FileNotFoundError:
         return None, None
     except Exception as e:
-        error_print(f"ロード失敗: {e}")
+        error_print(_lang.t(f"ロード失敗: {e}", f"Load failed: {e}"))
         return None, None
 
 def exists(filepath: str = SAVE_FILE) -> bool:

@@ -41,7 +41,9 @@
 python main.py
 ```
 
-起動後、以下を順番に入力する。
+起動直後に言語（日本語／English）を選ぶ。`python main.py --lang ja`（または `--lang en`）で選択を省略できる。英語を選ぶと、画面の表示とGMの文章が英語になる（内部のプロンプトは日本語のまま）。
+
+続いて、以下を順番に入力する。
 
 ```
 ジャンル: ミステリー
@@ -171,6 +173,7 @@ python main.py --deviate          # 逸脱モード（GMの誘導を無視して
 python main.py --debug            # 手動プレイ＋デバッグ出力あり（セッションログを1行動ごとに logs/ フォルダへJSONで上書き保存）
 python main.py --normal --batch 5   # バッチ実行（ランダムなジャンル・タイトルで5回連続）
 python main.py --deviate --batch 5  # 逸脱モードでバッチ実行
+python main.py --normal --batch 1 --lang en  # 英語でバッチ実行
 ```
 
 `--batch N` を指定すると、ジャンルを固定リスト（12種）からランダムな順で選び、タイトルをLLMが毎回自動生成してN回連続で実行し、1回ごとにJSONファイルを保存する。物語の軸・ダイス判定の有無・難易度・GMの一言は起動時に1回だけ選択し、全セッションで共通となる。

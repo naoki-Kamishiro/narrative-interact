@@ -2,7 +2,7 @@
 
 > ⚠️ This project is under development. Unexpected behavior or bugs may occur.
 
-> **Language note:** The system currently runs in Japanese only. The UI, the prompts, and the GM's narration are all in Japanese. An English version may be provided in the future.
+> **Language note:** You can choose Japanese or English at launch. In English, the UI and the GM's narration are in English. The internal prompts stay in Japanese.
 
 [日本語版 README はこちら](README.md)
 
@@ -43,11 +43,13 @@ Related articles (Japanese):
 python main.py
 ```
 
-After launch, enter the following in order (prompts are in Japanese).
+Right after launch, choose the language (日本語 / English). Use `python main.py --lang en` (or `--lang ja`) to skip this choice.
+
+Then enter the following in order.
 
 ```
-ジャンル (Genre): ミステリー
-タイトル (Title): 消えた遺言状
+Genre: Mystery
+Title: The Missing Will
 ```
 
 Next, choose the story's axis (物語の軸).
@@ -173,6 +175,7 @@ python main.py --deviate          # Deviate mode (actions that leave the story, 
 python main.py --debug            # Manual play with debug output (the session log is overwritten as JSON in the logs/ folder after every action)
 python main.py --normal --batch 5   # Batch run (5 consecutive runs with random genres and titles)
 python main.py --deviate --batch 5  # Batch run in deviate mode
+python main.py --normal --batch 1 --lang en  # Batch run in English
 ```
 
 With `--batch N`, genres are picked in random order from a fixed list (12 genres), the LLM generates a title each time, N sessions run back to back, and a JSON file is saved after each one. The story's axis, whether to use dice, the difficulty, and the GM one-liner are chosen once at launch and shared across all sessions.

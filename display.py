@@ -50,11 +50,14 @@ def gm_turning_point_print(text: str) -> None:
     """転換点ターンのGM描写を表示する（明るい黄色）。"""
     print(BOLD_YELLOW + text + RESET)
 
+import lang as _lang
+
+
 def system_print(text: str) -> None:
-    print(BLUE + f"[システム: {text}]" + RESET)
+    print(BLUE + f"[{_lang.t('システム', 'System')}: {text}]" + RESET)
 
 def error_print(text: str) -> None:
-    print(RED + f"[エラー: {text}]" + RESET)
+    print(RED + f"[{_lang.t('エラー', 'Error')}: {text}]" + RESET)
 
 def hr() -> None:
     print(HR)

@@ -23,12 +23,12 @@ LAST_GEN: dict = {"attempts": 0, "repairs": []}
 
 def _note_repair(msg: str) -> None:
     if DEBUG_MODE:
-        print(f"[plot修復] {msg}", file=sys.stderr)
+        print(_lang.t(f"[plot修復] {msg}", f"[plot repair] {msg}"), file=sys.stderr)
     LAST_GEN["repairs"].append(msg)
 
 
 def generate(genre: str, title: str) -> dict:
-    system_print("プロットを生成中...")
+    system_print(_lang.t("プロットを生成中...", "Generating plot..."))
     LAST_GEN["attempts"] = 0
     LAST_GEN["repairs"] = []
     messages = [
@@ -41,18 +41,19 @@ def generate(genre: str, title: str) -> dict:
         raw = chat_json(messages)
         result = _parse(raw)
         if result and all(result.get(k) for k in ("ending", "protagonist", "characters", "climax")):
-            system_print("プロット生成完了")
+            system_print(_lang.t("プロット生成完了", "Plot generated"))
             _warn_missing_keys(result)
             return result
         if attempt < MAX_RETRIES:
             missing = [k for k in ("ending", "protagonist", "characters", "climax") if not result.get(k)] if result else ["parse"]
-            system_print(f"再試行中... ({attempt}/{MAX_RETRIES}) 不足: {', '.join(missing)}")
-    system_print("プロット生成に失敗しました。プロットなしで続行します。")
+            system_print(_lang.t(f"再試行中... ({attempt}/{MAX_RETRIES}) 不足: {', '.join(missing)}",
+                                 f"Retrying... ({attempt}/{MAX_RETRIES}) missing: {', '.join(missing)}"))
+    system_print(_lang.t("プロット生成に失敗しました。プロットなしで続行します。", "Plot generation failed. Continuing without a plot."))
     return {}
 
 def _parse(raw: str) -> dict:
     if raw.startswith("[ERROR"):
-        system_print("プロット生成中にエラーが発生しました")
+        system_print(_lang.t("プロット生成中にエラーが発生しました", "An error occurred while generating the plot"))
         return {}
 
     cleaned = re.sub(r"```[a-z]*\n?", "", raw).strip()
@@ -76,7 +77,7 @@ def _parse(raw: str) -> dict:
     except Exception:
         pass
 
-    system_print("プロットのJSON解析に失敗しました")
+    system_print(_lang.t("プロットのJSON解析に失敗しました", "Failed to parse the plot JSON"))
     return {}
 
 
@@ -90,7 +91,8 @@ def _warn_missing_keys(plot: dict) -> None:
     for key in _REQUIRED_KEYS:
         val = plot.get(key)
         if not val:
-            system_print(f"[警告] プロットの必須キー「{key}」が空です。物語の進行に影響する可能性があります。")
+            system_print(_lang.t(f"[警告] プロットの必須キー「{key}」が空です。物語の進行に影響する可能性があります。",
+                                 f"[Warning] Required plot key \"{key}\" is empty. This may affect the story."))
 
 
 def _validate_and_repair(plot: dict) -> dict:
