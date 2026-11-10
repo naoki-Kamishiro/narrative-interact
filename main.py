@@ -3,6 +3,7 @@
 ジャンルとタイトルを入力するだけで物語が始まる。
 """
 
+import re
 import sys
 import copy
 import json
@@ -46,6 +47,12 @@ def _normalize_ending_marker(text: str) -> str:
     for v in ENDING_VARIANTS:
         text = text.replace(v, ENDING_MARKER)
     return text
+
+
+def _strip_md_emphasis(text: str) -> str:
+    # 英語版のみ：GMが書いた太字・斜体の記号（**…** / *…*）を外し、中の文字は残す
+    text = re.sub(r"\*\*([^*\n]+)\*\*", r"\1", text)
+    return re.sub(r"\*([^*\n]+)\*", r"\1", text)
 
 _EPILOGUE_UNSEEN_LOSS = "プロットに記された喪失でも、本編で描写されていないものは使わないこと。"
 EPILOGUE_PROMPT = (
@@ -224,6 +231,8 @@ def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
     if not reply.startswith("[ERROR"):
         reply = beat_mod.filter_output(reply)
         reply = _normalize_ending_marker(reply)
+        if _lang.is_en():
+            reply = _strip_md_emphasis(reply)
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
