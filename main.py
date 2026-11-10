@@ -128,6 +128,12 @@ BATCH_GENRES = [
     "時代劇", "現代ドラマ", "サスペンス", "青春",
     "怪談", "冒険", "犯罪", "日常",
 ]
+# 英語版（--lang en）のバッチ用ジャンル。上の一覧と同じ並びの英語圏のジャンル名
+BATCH_GENRES_EN = [
+    "Horror", "Mystery", "Fantasy", "Sci-Fi",
+    "Historical", "Contemporary drama", "Suspense", "Coming-of-age",
+    "Ghost story", "Adventure", "Crime", "Slice of life",
+]
 _batch_genre_queue: list[str] = []  # シャッフル済みキュー
 
 # バッチ用ダイス設定（開始前に1回だけ手入力）
@@ -1116,7 +1122,9 @@ def _pick_batch_genre() -> str:
     """バッチ用ジャンルキューから次のジャンルを取り出す。空になったら再シャッフル。"""
     global _batch_genre_queue
     if not _batch_genre_queue:
-        _batch_genre_queue = random.sample(BATCH_GENRES, len(BATCH_GENRES))
+        import lang as _lang
+        _genres = BATCH_GENRES_EN if _lang.is_en() else BATCH_GENRES
+        _batch_genre_queue = random.sample(_genres, len(_genres))
     return _batch_genre_queue.pop(0)
 
 
