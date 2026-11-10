@@ -15,11 +15,15 @@ DEBUG_MODE: bool = False
 
 MAX_RETRIES = 3
 
+import lang as _lang
+
+
 def generate(genre: str, title: str) -> dict:
     system_print("プロットを生成中...")
     messages = [
         {"role": "system", "content": SYSTEM_PLOT},
-        {"role": "user",   "content": build_plot_message(genre, title)},
+        {"role": "user",   "content": build_plot_message(genre, title)
+                                    + ("\n" + _lang.EN_PLOT_LINE if _lang.is_en() else "")},
     ]
     for attempt in range(1, MAX_RETRIES + 1):
         raw = chat_json(messages)

@@ -1289,10 +1289,17 @@ def main():
         print("  --normal         自動プレイ（通常）")
         print("  --deviate        自動プレイ（逸脱）")
         print("  --batch N        N回バッチ実行（--normal または --deviate と併用）")
+        print("  --lang en        GMの出力を英語にする（試作。UIは日本語のまま）")
         print("  --debug          デバッグ出力を有効化（stderrに出力）")
         print("  --help, -h       このヘルプを表示")
         sys.exit(0)
 
+    # 出力言語（英語版の試作）: --lang en
+    if "--lang" in sys.argv:
+        _i = sys.argv.index("--lang")
+        if _i + 1 < len(sys.argv) and sys.argv[_i + 1] in ("ja", "en"):
+            import lang as _lang
+            _lang.LANG = sys.argv[_i + 1]
     if "--normal" in sys.argv:
         AUTO_PLAY_MODE = "normal"
     elif "--deviate" in sys.argv:
