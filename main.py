@@ -29,12 +29,20 @@ COMMANDS = {
     "/h":    "コマンド一覧",
 }
 
-ENDING_MARKER = "【エンディング】"
+ENDING_MARKER = "[Ending]"
+# 旧表記・表記ゆれ。GM応答を受け取った直後に ENDING_MARKER へ揃える（旧ログ・旧セーブの判定にも使う）
+ENDING_VARIANTS = ("【エンディング】", "[エンディング]", "［エンディング］", "【Ending】", "［Ending］", "[ENDING]")
+
+
+def _normalize_ending_marker(text: str) -> str:
+    for v in ENDING_VARIANTS:
+        text = text.replace(v, ENDING_MARKER)
+    return text
 
 _EPILOGUE_UNSEEN_LOSS = "プロットに記された喪失でも、本編で描写されていないものは使わないこと。"
 EPILOGUE_PROMPT = (
     "エピローグを200字程度で書いてください。"
-    "（これはエピローグ専用の依頼です。「【エンディング】以降の描写禁止」ルールはエピローグには適用されません。）"
+    "（これはエピローグ専用の依頼です。「[Ending]以降の描写禁止」ルールはエピローグには適用されません。）"
     "本編で明示された代償・損失や主要人物の状態（生死・関係の変化等）を1〜2点、具体的な描写で回収すること。"
     "本編で損失が描かれていなければ、主要人物の状態だけでよい。"
     + _EPILOGUE_UNSEEN_LOSS +
@@ -201,6 +209,7 @@ def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
         return "[ERROR: empty response]"
     if not reply.startswith("[ERROR"):
         reply = beat_mod.filter_output(reply)
+        reply = _normalize_ending_marker(reply)
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
@@ -322,7 +331,7 @@ def _build_adaptive_beat_queue(new_plot: dict) -> list:
             "done": False,
             "injection": (
                 f"（GMへの場面指示: 着地点「{ending}」の結末を迎えてください。"
-                f"物語が完結した場合は最後の1行に「【エンディング】」とのみ出力すること。）"
+                f"物語が完結した場合は最後の1行に「[Ending]」とのみ出力すること。）"
             ),
         })
     return queue
@@ -376,7 +385,7 @@ def _build_api_messages(h: list) -> list:
                 "行動がどちらかの選択に明確に当たる場合はその選択の結果として描き、当たらない場合は、主人公がどちらかを選んだ・決意したとは描写せず、選ばなかったことの結果（時間の経過、NPCや状況が先に動く等）として描写すること。"
                 "新たなプロット上の出来事は起こさないこと。"
                 "プレイヤーの入力にない主人公の行動・台詞・移動は書かないこと。"
-                "このターンでは物語を完結させず、【エンディング】は出力しないこと。着地点の場面は描写しないこと。"
+                "このターンでは物語を完結させず、[Ending]は出力しないこと。着地点の場面は描写しないこと。"
             )
             for i in reversed(range(len(msgs))):
                 if msgs[i]["role"] == "user":
@@ -400,11 +409,11 @@ def _build_api_messages(h: list) -> list:
                     f"全てのプロット要素が出揃いました。"
                     f"着地点「{ending}」に向けて、"
                     f"プレイヤーの行動に応じて物語を一歩進めてください。"
-                    f"物語が自然に完結した場合は、最後の1行に「【エンディング】」とのみ出力すること。"
+                    f"物語が自然に完結した場合は、最後の1行に「[Ending]」とのみ出力すること。"
                     f"{hook_clause}{_ENDING_GUARD}"
                 )
             else:
-                injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+                injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
             msgs = [dict(m) for m in msgs]
             for i in reversed(range(len(msgs))):
                 if msgs[i]["role"] == "user":
@@ -429,21 +438,21 @@ def _build_api_messages(h: list) -> list:
                         f"【必須】このターンで物語を完結させてください。"
                         f"着地点「{ending}」の結末へ向かうこと。"
                         f"新たな障壁や展開を追加せず、必ずこのターンで締めくくること。"
-                        f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
+                        f"最後の1行に必ず「[Ending]」とのみ出力してください。"
                         f"{hook_clause}{_ENDING_GUARD}"
                     )
                 else:
-                    injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「【エンディング】」とのみ出力してください。"
+                    injection = "【必須】このターンで物語を完結させてください。新たな展開を追加せず、このターンで必ず締めくくること。最後の1行に必ず「[Ending]」とのみ出力してください。"
             else:
                 # 1ターン目は緩めの再促進
                 if ending:
                     injection = (
                         f"着地点「{ending}」に向けて、物語をクロージングへ導いてください。"
-                        f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
+                        f"完結した場合は最後の1行に「[Ending]」とのみ出力すること。"
                         f"{hook_clause}{_ENDING_GUARD}"
                     )
                 else:
-                    injection = "物語をクロージングへ導いてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+                    injection = "物語をクロージングへ導いてください。完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
             msgs = [dict(m) for m in msgs]
             for i in reversed(range(len(msgs))):
                 if msgs[i]["role"] == "user":
@@ -473,10 +482,10 @@ def _build_api_messages(h: list) -> list:
                 injection = (
                     f"全ての展開が出揃いました。"
                     f"着地点「{ending}」に向けて物語を完結させてください。"
-                    f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
+                    f"完結した場合は最後の1行に「[Ending]」とのみ出力すること。"
                 ) if ending else (
                     "全ての展開が出揃いました。物語を自然な完結へ向けて一歩進めてください。"
-                    "完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+                    "完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
                 )
                 msgs = [dict(m) for m in msgs]
                 for i in reversed(range(len(msgs))):
@@ -496,14 +505,14 @@ def _build_api_messages(h: list) -> list:
                     injection = (
                         f"【必須】このターンで物語を完結させてください。"
                         f"新たな障壁を追加せず、必ずこのターンで締めくくること。"
-                        f"最後の1行に必ず「【エンディング】」とのみ出力してください。"
+                        f"最後の1行に必ず「[Ending]」とのみ出力してください。"
                     )
                 else:
                     injection = (
                         f"着地点「{ending}」に向けて物語をクロージングへ導いてください。"
-                        f"完結した場合は最後の1行に「【エンディング】」とのみ出力すること。"
+                        f"完結した場合は最後の1行に「[Ending]」とのみ出力すること。"
                     ) if ending else (
-                        "物語をクロージングへ導いてください。完結した場合は最後の1行に「【エンディング】」とのみ出力してください。"
+                        "物語をクロージングへ導いてください。完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
                     )
                 msgs = [dict(m) for m in msgs]
                 for i in reversed(range(len(msgs))):
@@ -729,7 +738,7 @@ def _record_dice(h: list, dice_result: dict | None) -> None:
 
 
 def check_ending(reply: str) -> bool:
-    return ENDING_MARKER in reply
+    return ENDING_MARKER in _normalize_ending_marker(reply)
 
 PLOT_MODE_LABELS = {
     "1": ("strong", "プロット参照・強拘束"),

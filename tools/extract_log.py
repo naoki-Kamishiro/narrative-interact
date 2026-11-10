@@ -41,7 +41,8 @@ def extract(path):
     mode = st.get("plot_mode", "")
     cl = plot.get("climax") or {}
     out = [f"=== {path}", f"モード: {mode} / ジャンル: {st.get('genre', '')} / 総ターン: {len(turns)}"]
-    e = next((n for n, (_, a) in enumerate(turns, 1) if "【エンディング】" in a), None)
+    marks = ("[Ending]", "【エンディング】", "[エンディング]", "［エンディング］")  # 新旧の終わりの印
+    e = next((n for n, (_, a) in enumerate(turns, 1) if any(m in a for m in marks)), None)
 
     def show(labels):
         for n in sorted(labels):
@@ -53,7 +54,7 @@ def extract(path):
         # 1. クライマックス前後
         out += [f"舞台(setting): {cl.get('setting', '')}", f"山場(peak): {cl.get('peak', '')}", "■ クライマックス"]
         if e is None:
-            out.append("※【エンディング】が見つからない（未完）")
+            out.append("※終わりの印（[Ending]／【エンディング】）が見つからない（未完）")
         else:
             first_end = e - st.get("post_prompt_count", 0)
             c1 = first_end - 2
@@ -87,7 +88,7 @@ def extract(path):
                 labels.update({r - 1: "再生成の直前", r: "再生成（新ビート注入）", r + 1: "再生成の次"})
         out.append("■ 終盤")
         if e is None:
-            out.append("※【エンディング】が見つからない（未完）")
+            out.append("※終わりの印（[Ending]／【エンディング】）が見つからない（未完）")
         else:
             out.append(f"エンディング=T{e} / 誘導回数={st.get('post_prompt_count', 0)}")
             labels.update({e - 1: "エンディングの直前", e: "エンディング"})
