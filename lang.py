@@ -14,6 +14,8 @@ _EN_REPLACE = [
     ("500字以内", "250語（words）以内"),
     ("200字程度", "100語（words）程度"),
     ("短い日本語タイトル", "短い英語（English）のタイトル"),
+    ("判定理由を10文字以内で", "判定理由を英語（English）で5語以内で"),
+    ("20字以内の一言のみ", "英語（English）で10語以内の一言のみ"),
 ]
 
 # 英語のときだけプロット生成の依頼に足す1行（人物名・文化圏）
@@ -33,6 +35,26 @@ EN_GENRE_TITLE_LINE = "ジャンル名・タイトルは英語（English）で�
 
 def is_en() -> bool:
     return LANG == "en"
+
+
+def t(ja: str, en: str) -> str:
+    """画面表示用。日本語と英語を並べて書き、今の言語の方を返す。"""
+    return en if is_en() else ja
+
+
+def ask_language() -> None:
+    """起動直後に表示言語を選ぶ（日英併記）。"""
+    global LANG
+    print()
+    print("Language / 言語:")
+    print("  1. 日本語")
+    print("  2. English")
+    while True:
+        c = input("[1/2]: ").strip()
+        if c in ("1", "2"):
+            LANG = "ja" if c == "1" else "en"
+            return
+        print("1 か 2 を入力してください。 / Please enter 1 or 2.")
 
 
 def localize_text(text: str) -> str:

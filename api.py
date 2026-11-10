@@ -217,6 +217,8 @@ def regenerate_plot(recent_history: list[dict], genre: str) -> str:
         f'  ]\n'
         f'}}'
     )
+    if _lang.is_en():
+        prompt = prompt + "\n" + _lang.EN_PLOT_LINE
     messages = [
         {"role": "system", "content": "あなたは小説の物語設計者です。JSONのみ出力します。"},
         {"role": "user", "content": prompt},
@@ -355,7 +357,7 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
         response = client.chat.completions.create(
             model="local",
             **_REASONING_KW,
-            messages=messages,
+            messages=_lang.localize(messages),
             max_tokens=32,
             temperature=0.9,
         )
@@ -363,8 +365,9 @@ def generate_gm_char_comment(action: str, recent_history: list[dict], character:
         # 複数行になった場合は1行目のみ
         comment = comment.split("\n")[0].strip()
         # 長すぎる場合は切り捨て
-        if len(comment) > 30:
-            comment = comment[:30]
+        _limit = 80 if _lang.is_en() else 30
+        if len(comment) > _limit:
+            comment = comment[:_limit]
         return comment
     except Exception:
         return ""

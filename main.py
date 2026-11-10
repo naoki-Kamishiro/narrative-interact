@@ -1336,6 +1336,11 @@ def main():
         beat_mod.DEBUG_MODE = True
         plot_mod.DEBUG_MODE = True
 
+    # 表示言語：--lang の指定がなければ起動直後に選ぶ
+    if "--lang" not in sys.argv:
+        import lang as _lang
+        _lang.ask_language()
+
     print()
     print("╔══════════════════════════════════════════╗")
     print("║  ナラティブインタラクト (LM Studio版)    ║")

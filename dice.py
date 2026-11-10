@@ -12,6 +12,7 @@ import json
 import random
 import re
 from api import chat_json
+import lang as _lang
 
 JUDGE_PROMPT = """\
 プレイヤーの行動を受け取り、ダイス判定が必要かどうかを判断してください。
@@ -131,11 +132,12 @@ def judge(action: str, history: list) -> dict | None:
 
 def display_result(result: dict) -> None:
     """ダイス結果をコンソールに表示する。"""
-    outcome = "成功" if result["success"] else "失敗"
+    outcome = _lang.t("成功", "Success") if result["success"] else _lang.t("失敗", "Failure")
     intensity_label = {
-        "decisive": "（決定的）",
+        "decisive": _lang.t("（決定的）", " (decisive)"),
         "normal": "",
-        "severe": "（重大）",
+        "severe": _lang.t("（重大）", " (severe)"),
     }.get(result.get("intensity", "normal"), "")
-    print(f"🎲 判定: {result['reason']} / 難易度{result['difficulty']} / 出目{result['dice']} → {outcome}{intensity_label}")
+    print(_lang.t(f"🎲 判定: {result['reason']} / 難易度{result['difficulty']} / 出目{result['dice']} → {outcome}{intensity_label}",
+                  f"🎲 Check: {result['reason']} / Difficulty {result['difficulty']} / Roll {result['dice']} → {outcome}{intensity_label}"))
 
