@@ -30,7 +30,7 @@ def _show_progress(stop_event: threading.Event) -> None:
     chars = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
     i = 0
     while not stop_event.is_set():
-        sys.stdout.write(f"\r生成中 {chars[i % len(chars)]}")
+        sys.stdout.write(f"\r{_lang.t('生成中', 'Generating')} {chars[i % len(chars)]}")
         sys.stdout.flush()
         i += 1
         time.sleep(0.1)
