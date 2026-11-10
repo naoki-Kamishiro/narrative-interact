@@ -258,6 +258,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+a5e5859 Merge experiment/ending-marker: 終わりの印を [Ending] に統一し、旧表記・表記ゆれも検出
 23d84c6 Merge experiment/deviate-move: 逸脱役のプレイヤーに場面を変える行動を取らせ、adaptive の再生成を検証可能に
 c2a5cd3 Merge experiment/plot-no-npc-fact: 【プロット】節からNPCに事実を言わせてよいという前半を外し、反転の第三者解説を解消
 95a2d87 Merge experiment/climax-no-warp: クライマックスの注入文で現在地を主にし、舞台を目安にする（強制移動の解消）
