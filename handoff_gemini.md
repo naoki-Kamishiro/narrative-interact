@@ -258,6 +258,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+770b8db Merge experiment/en-ui: UIの英語化（起動時に日本語／English を選択、--lang ja|en で省略）、英語版でGM応答の太字・斜体の記号を除去
 4bbb9c0 Merge experiment/en-output: 英語版の試作（--lang en。GMの出力のみ英語化、内部プロンプトは日本語）、ログを logs/ に保存、プロット生成の記録
 a5e5859 Merge experiment/ending-marker: 終わりの印を [Ending] に統一し、旧表記・表記ゆれも検出
 23d84c6 Merge experiment/deviate-move: 逸脱役のプレイヤーに場面を変える行動を取らせ、adaptive の再生成を検証可能に
