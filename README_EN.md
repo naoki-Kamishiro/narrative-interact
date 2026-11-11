@@ -217,7 +217,7 @@ Larger models (gemma-4-26B-A4B, gemma-4-31B-it) keep the prose style better, but
 - **Skipping the hook closing**: The closing of the opening hook (hook.closing) is not narrated in the ending
 - **Forced jumps to the landing point**: In free and adaptive modes, abruptly brings in characters who never appeared or distant places to match the landing point
 - **Acting out the peak**: In strong mode, the GM writes the protagonist's peak action that is not in the input
-- **Warping to the climax**: In strong mode, carries the protagonist to the climax setting via a flash of light or a collapse
+- **Warping to the climax**: In strong mode, carries the protagonist to the climax setting via a flash of light or a collapse (during the two climax turns, a warp is detected and the turn is regenerated once)
 - **Revealing twists**: A third-party NPC explains a plot twist at length in dialogue
 
 **Remaining constraints (still occur at some frequency after mitigation)**

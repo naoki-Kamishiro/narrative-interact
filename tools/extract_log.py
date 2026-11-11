@@ -84,6 +84,8 @@ def extract(path):
             first_end = e - st.get("post_prompt_count", 0)
             c1 = first_end - 2
             out.append(f"エンディング=T{e} / 誘導1回目=T{first_end} / クライマックス=T{c1},T{c1 + 1}")
+            if "warp_retries" in st:
+                out.append(f"強制移動の描き直し: {st['warp_retries'] or 'なし'}")
             show({c1 - 1: "直前", c1: "クライマックス1", c1 + 1: "クライマックス2", first_end: "誘導1回目"})
     else:
         # 1. 逸脱・再生成（adaptive）と終盤

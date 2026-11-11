@@ -179,6 +179,38 @@ def check_deviation(actions: list[str], plot_keywords: list[str]) -> bool:
         return False
 
 
+def check_warp(prev: str, action: str, reply: str) -> bool:
+    """クライマックスの描写で、主人公が移動の行動なしに（または一瞬で遠くへ）別の場所へ移ったかを yes/no で判定する。
+    エラー時は False（描き直さない側に倒す）。tools/check_warp_probe.py で日英20件すべて一致を確認した文面。"""
+    prompt = (
+        "以下はテキストRPGの連続する場面です。\n\n"
+        f"【直前の描写】\n{(prev or '')[-600:]}\n\n"
+        f"【プレイヤーの行動】\n{action}\n\n"
+        f"【今回の描写】\n{(reply or '')[:1200]}\n\n"
+        "今回の描写で、主人公は直前の描写と別の場所へ移っていますか。"
+        "プレイヤーの行動が歩く・進む・入るなどの移動で、その行き先に普通に着いただけなら no。"
+        "崩落・光・空間の歪み・視界の一変などで、移動の行動なしに、または一瞬で遠く離れた場所へ移ったなら yes。"
+        "同じ場所のまま風景や状況が変わっただけなら no。\n"
+        "「yes」か「no」の1単語のみで答えてください。"
+    )
+    messages = [
+        {"role": "system", "content": "あなたはテキストRPGの進行を補助するシステムです。"},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="local",
+            **_REASONING_KW,
+            messages=messages,
+            max_tokens=4,
+            temperature=0.0,
+        )
+        return (response.choices[0].message.content or "").strip().lower().startswith("yes")
+    except Exception:
+        return False
+
+
 def regenerate_plot(recent_history: list[dict], genre: str) -> str:
     """直近の会話履歴をもとに新しいプロットをJSONで生成する（adaptive用）。
     recent_history: 直近Nターン分のuser/assistantメッセージ（systemは除く）。
