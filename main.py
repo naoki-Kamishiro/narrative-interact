@@ -472,20 +472,11 @@ def _build_api_messages(h: list) -> list:
                 print(debug, file=sys.stderr)
         # キューが枯渇しており、まだエンディング促進をしていない場合
         queue_exhausted = queue and beat_mod.get_current_beat(queue, ptr) is None
-        if not debug and queue_exhausted and not s.get("ending_prompted", False):
-            plot = s.get("plot", {})
-            ending = plot.get("ending", "")
-            hook_clause = _hook_closing_clause(plot)
-            if ending:
-                injection = (
-                    f"全てのプロット要素が出揃いました。"
-                    f"着地点「{ending}」に向けて、"
-                    f"プレイヤーの行動に応じて物語を一歩進めてください。"
-                    f"物語が自然に完結した場合は、最後の1行に「[Ending]」とのみ出力すること。"
-                    f"{hook_clause}{_ENDING_GUARD}"
-                )
-            else:
-                injection = "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
+        if not debug and queue_exhausted and not s.get("ending_prompted", False) and \
+                _defer_ending_if_failed(msgs := [dict(m) for m in msgs]):
+            pass
+        elif not debug and queue_exhausted and not s.get("ending_prompted", False):
+            injection = _ending_first_injection(s.get("plot", {}))
             msgs = [dict(m) for m in msgs]
             for i in reversed(range(len(msgs))):
                 if msgs[i]["role"] == "user":
@@ -548,7 +539,10 @@ def _build_api_messages(h: list) -> list:
                 print(debug, file=sys.stderr)
             # キュー枯渇時のエンディング促進（strongと同じロジック）
             queue_exhausted = queue and beat_mod.get_current_beat(queue, ptr) is None
-            if queue_exhausted and not s.get("ending_prompted", False):
+            if queue_exhausted and not s.get("ending_prompted", False) and \
+                    _defer_ending_if_failed(msgs := [dict(m) for m in msgs]):
+                pass
+            elif queue_exhausted and not s.get("ending_prompted", False):
                 new_plot = s.get("adaptive_new_plot", {})
                 ending = new_plot.get("ending_scene", "")
                 injection = (
@@ -675,6 +669,42 @@ def _is_turning_point_beat(beat: dict) -> bool:
     if t == "choice":
         return timing not in ("序盤", "中盤")
     return False
+
+
+def _ending_first_injection(plot: dict) -> str:
+    """strong のエンディング誘導1回目の注入文（tools/check_ending_fail_probe.py からも使う）"""
+    ending = plot.get("ending", "")
+    if not ending:
+        return "全てのプロット要素が出揃いました。プレイヤーの行動に応じて物語を自然な完結へ向けて一歩進めてください。完結した場合は最後の1行に「[Ending]」とのみ出力してください。"
+    return (
+        f"全てのプロット要素が出揃いました。"
+        f"着地点「{ending}」に向けて、"
+        f"プレイヤーの行動に応じて物語を一歩進めてください。"
+        f"物語が自然に完結した場合は、最後の1行に「[Ending]」とのみ出力すること。"
+        f"{_hook_closing_clause(plot)}{_ENDING_GUARD}"
+    )
+
+
+_ENDING_DEFER_INJECTION = "このターンでは物語を完結させず、[Ending]は出力しないこと。"
+
+
+def _defer_ending_if_failed(msgs: list) -> bool:
+    """エンディング誘導の1回目を入れるターンで判定が失敗なら、誘導を次のターンへ1回だけ回す。
+    失敗の描写とエンディング誘導が同じターンに重なると、NPCが代わりに決着をつける・着地点に届かず終わるため。
+    回したときは、そのターンに「完結させない」を注入して True を返す（ending_prompted は立てない）。"""
+    s = state.get()
+    if s.get("ending_deferred"):
+        return False
+    last = next((m for m in reversed(msgs) if m.get("role") == "user"), None)
+    if not last or "→ 失敗。" not in last.get("content", ""):
+        return False
+    last["content"] = last["content"] + f"\n（GMへの場面指示: {_ENDING_DEFER_INJECTION}）"
+    turn = sum(1 for m in msgs if m.get("role") == "user") - 1
+    state.update({"ending_deferred": True, "ending_deferred_turn": turn})
+    if DEBUG_MODE:
+        print(_lang.t("[BEAT] 判定失敗のため、エンディング誘導を次のターンへ回す",
+                      "[BEAT] check failed: ending prompt deferred to next turn"), file=sys.stderr)
+    return True
 
 
 _ENDING_GUARD = (
