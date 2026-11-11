@@ -5,12 +5,13 @@
      英語のログ（lang=en）は、you と主人公の名前の回数・比喩の件数・Markdown の消し残り・開始シーンも出す
   2. 反転・誤認の内容と、それを説明していそうなNPCの台詞（ターン番号付き）
 使い方: python tools/extract_log.py "*_exp-xxx.json"  （ログのパターンを指定。省略時は今いるフォルダの *.json すべて）
-出力: 今いるフォルダの log_extract.txt（標準出力にも表示）。検証では Claude にこのファイルだけを渡す
+出力: tools/log_extract.txt（標準出力にも表示）。検証では Claude にこのファイルだけを渡す
 """
 import json
 import re
 import sys
 import glob
+import os
 
 MAX = 600  # クライマックス前後の1発言あたりの最大文字数（0で無制限）
 
@@ -155,5 +156,7 @@ if __name__ == "__main__":
     text = "\n\n".join(res)
     print(text)
     print(f"{len(files)}件を処理しました", file=sys.stderr)
-    with open("log_extract.txt", "w", encoding="utf-8") as f:
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log_extract.txt")
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(text)
+    print(f"保存しました: {out_path}", file=sys.stderr)
