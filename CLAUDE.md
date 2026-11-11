@@ -107,6 +107,7 @@ LM Studio用インタラクティブフィクションシステム。
 | dice.py | ダイス判定（判定要否はLLM、出目・難易度・強度はPython） |
 | state.py / history.py / save.py / display.py / config.py | 状態・履歴・セーブ・表示・接続設定 |
 | tools/check_reasoning_off.py | OpenAI互換APIで推論オフの指定が効くかの確認用 |
+| tools/plot_probe.py | 検証用。プロット生成だけを日英で繰り返し、修復・再試行の頻度と生の出力の形（choices への入り込み・欠落キー）を tools/plot_probe_summary.txt に集計（生の出力は tools/plot_probe_raw.json） |
 | tools/extract_log.py | 検証用。ログからクライマックス前後（直前・クライマックス1・2・誘導1回目）と、反転・誤認の内容・それを説明していそうな台詞だけを log_extract.txt に抜き出す（Claude にログ全文を渡さずに済ませる） |
 | handoff_gemini.md | 現行仕様・検証結果・既知の限界・ログ評価テンプレート（他LLM向け） |
 
@@ -172,6 +173,7 @@ python main.py --normal             # 自動プレイ（通常）
 python main.py --deviate            # 自動プレイ（逸脱）
 python main.py --normal --batch 5   # バッチ（ランダムなジャンル・タイトルでN回）
 python tools/check_reasoning_off.py # 推論オフの指定の確認（LM Studio にモデルを1つロード）
+python tools/plot_probe.py 10 both  # プロット生成だけを日英10本ずつ（tools/plot_probe_summary.txt を Claude に渡す）
 python tools/extract_log.py "*_exp-xxx.json" # 検証用の抜き出し（ログは logs/ に保存される。引数なしなら logs/*.json。log_extract.txt を Claude に渡す）
 ```
 ログ評価の手順・チェックリストは handoff_gemini.md。ダイスの判定ターンは `state.dice_log`、GMの一言は `state.gm_char_log`（turn は user メッセージ通し番号、開始指示が1）。

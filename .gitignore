@@ -10,4 +10,5 @@ build/
 saves/
 *.json
 log_extract.txt
+tools/plot_probe_summary.txt
 logs/
