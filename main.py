@@ -215,6 +215,21 @@ def _show_gm_reply(reply: str, turning_point: bool) -> None:
 _WARP_RETRY_NOTE = "前回の描写は、主人公を移動の行動なしに別の場所へ移していた。主人公は現在いる場所から動かさずに描写すること。"
 
 
+def _warp_retry_messages(messages: list, strip_setting: bool = True) -> list:
+    """強制移動の描き直し用のメッセージ。最後の user に描き直しの指示を添える。
+    strip_setting=True なら、クライマックスの注入文から舞台の指定を外す（舞台への引っ張りが描き直しの指示に勝つため）。
+    tools/check_warp_retry_probe.py からも使う。"""
+    msgs2 = [dict(m) for m in messages]
+    for i in reversed(range(len(msgs2))):
+        if msgs2[i]["role"] == "user":
+            if strip_setting:
+                msgs2[i]["content"] = re.sub(r"舞台の目安は.*?現在地から舞台につながる形で進めること。", "",
+                                             msgs2[i]["content"], flags=re.S)
+            msgs2[i]["content"] += f"\n（GMへの場面指示: {_WARP_RETRY_NOTE}）"
+            break
+    return msgs2
+
+
 def _retry_if_warp(messages: list, reply: str) -> str:
     """strong のクライマックスのターンで強制移動を検出したら、1回だけ描き直させる（GMのプロンプトは変えない）。"""
     global _CLIMAX_TURN
@@ -227,15 +242,7 @@ def _retry_if_warp(messages: list, reply: str) -> str:
     action = (users[-1]["content"] if users else "").split("\n")[0].strip()
     if not check_warp(prev, action, reply):
         return reply
-    msgs2 = [dict(m) for m in messages]
-    for i in reversed(range(len(msgs2))):
-        if msgs2[i]["role"] == "user":
-            # 描き直しのときだけ、クライマックスの注入文から舞台の指定を外す（舞台への引っ張りが描き直しの指示に勝つため）
-            msgs2[i]["content"] = re.sub(r"舞台の目安は.*?現在地から舞台につながる形で進めること。", "",
-                                         msgs2[i]["content"], flags=re.S)
-            msgs2[i]["content"] += f"\n（GMへの場面指示: {_WARP_RETRY_NOTE}）"
-            break
-    reply2 = chat(msgs2)
+    reply2 = chat(_warp_retry_messages(messages))
     ok = bool(reply2.strip()) and not reply2.startswith("[ERROR") and reply2 != "[CONTEXT_LIMIT]"
     still = check_warp(prev, action, reply2) if ok else None
     s = state.get()
