@@ -5,6 +5,7 @@
     python tools/plot_probe.py               # 日英それぞれ5本（同じジャンルの並びで交互に）
     python tools/plot_probe.py 10            # 日英それぞれ10本
     python tools/plot_probe.py 10 en         # 英語だけ10本（ja / en / both）
+    python tools/plot_probe.py 10 both titles  # タイトルだけ（プロットは作らない。バッチと同じく直近のタイトルを避けさせる）
 出力（tools/ に保存）：
     plot_probe_summary.txt  … 集計（これだけ貼ってもらえば判断できる）
     plot_probe_raw.json     … LLMの生の出力を含む全記録（必要なときだけ）
@@ -26,6 +27,7 @@ import api  # noqa: E402
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 5
 WHICH = sys.argv[2] if len(sys.argv) > 2 else "both"
 LANGS = ["ja", "en"] if WHICH == "both" else [WHICH]
+TITLES_ONLY = len(sys.argv) > 3 and sys.argv[3] == "titles"
 
 GENRES_JA = ["ホラー", "ミステリー", "ファンタジー", "SF", "時代劇", "現代ドラマ",
              "サスペンス", "青春", "怪談", "冒険", "犯罪", "日常"]
@@ -71,6 +73,38 @@ def inspect_raw(raw: str) -> dict:
 
 
 order = random.sample(range(len(GENRES_JA)), len(GENRES_JA))
+if TITLES_ONLY:
+    # バッチと同じ避け方：logs/ の直近のタイトル＋この実行で作ったタイトル（新しい順に最大10件）
+    import main  # noqa: E402
+    lines = []
+    for lg in LANGS:
+        _lang.LANG = lg
+        made: list = []
+        base = main._recent_titles()
+        for i in range(N):
+            gi = order[i % len(order)]
+            genre = GENRES_EN[gi] if lg == "en" else GENRES_JA[gi]
+            avoid = (made[::-1] + [t for t in base if t not in made])[:10]
+            t = (api.generate_genre_title(genre, avoid=avoid).get("title") or "").strip()
+            made.append(t)
+            print(f"[{lg}] {i + 1}/{N} {genre}: {t}", file=sys.stderr)
+        if lg == "en":
+            words = Counter(w for t in made for w in re.findall(r"[a-z']+", t.lower())
+                            if w not in ("of", "the", "a", "an", "and", "in", "on", "to"))
+        else:
+            words = Counter(w for t in made for w in re.findall(r"[一-龥ァ-ヴー]{2,}", t))
+        lines += [f"■ {lg}（{N}本、logs/ から避けた直近のタイトル {len(base)}件）",
+                  "同じタイトルの重複: " + (", ".join(f"{k}×{v}" for k, v in Counter(made).items() if v > 1) or "なし"),
+                  "logs/ の直近と同じタイトル: " + (", ".join(t for t in made if t in base) or "なし"),
+                  "2回以上出た語: " + (", ".join(f"{k}×{v}" for k, v in words.most_common() if v > 1) or "なし"),
+                  ""] + [f"  {t}" for t in made] + [""]
+    text = "\n".join(lines)
+    print(text)
+    with open(os.path.join(TOOLS_DIR, "plot_probe_summary.txt"), "w", encoding="utf-8") as f:
+        f.write(text)
+    print("保存しました: tools/plot_probe_summary.txt", file=sys.stderr)
+    sys.exit(0)
+
 records = []
 for i in range(N):
     gi = order[i % len(order)]
