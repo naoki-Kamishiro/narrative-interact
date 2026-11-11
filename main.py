@@ -1146,6 +1146,26 @@ def push_user(h: list, content: str, replace_pending: bool) -> list:
             h.pop()
     return hist.add_user(h, content)
 
+def _recent_titles(limit: int = 10) -> list[str]:
+    """logs/ の新しい順に、今の言語のセッションのタイトルを最大 limit 件返す（バッチのタイトルの偏り対策）"""
+    import os as _os
+    import glob as _glob
+    d = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "logs")
+    titles: list[str] = []
+    for p in sorted(_glob.glob(_os.path.join(d, "*.json")), key=_os.path.getmtime, reverse=True):
+        try:
+            with open(p, encoding="utf-8") as f:
+                st = json.load(f).get("state") or {}
+        except Exception:
+            continue
+        t = (st.get("title") or "").strip()
+        if t and st.get("lang", "ja") == _lang.LANG and t not in titles:
+            titles.append(t)
+            if len(titles) >= limit:
+                break
+    return titles
+
+
 def _pick_batch_genre() -> str:
     """バッチ用ジャンルキューから次のジャンルを取り出す。空になったら再シャッフル。"""
     global _batch_genre_queue
@@ -1164,7 +1184,7 @@ def run_single_session(plot_mode: str) -> None:
     _reset_session_log()
     # ジャンルをリストから選択し、タイトルのみLLMに生成させる
     genre = _pick_batch_genre()
-    result = generate_genre_title(genre)
+    result = generate_genre_title(genre, avoid=_recent_titles())
     if "error" in result:
         error_print(_lang.t(f"タイトル生成に失敗しました: {result['error']}", f"Title generation failed: {result['error']}"))
         return

@@ -93,7 +93,7 @@ def chat_player(gm_response: str, system_prompt: str, recent_actions: list | Non
         return f"[ERROR: {e}]"
 
 
-def generate_genre_title(genre: str = "") -> dict:
+def generate_genre_title(genre: str = "", avoid: list[str] | None = None) -> dict:
     """バッチモード用: LLMにタイトルを生成させる。
     genre: ジャンル（指定された場合はそのジャンルのタイトルのみ生成）。
     戻り値: {"genre": "...", "title": "..."} または {"error": "..."}
@@ -114,6 +114,9 @@ def generate_genre_title(genre: str = "") -> dict:
             "以下のJSON形式のみで出力してください。説明や前置きは不要です。\n"
             '{"genre": "ジャンル名", "title": "タイトル"}'
         )
+    if avoid:
+        prompt = prompt.replace("以下のJSON形式", "次のタイトルと同じ語・似た言い回しを使わないこと："
+                                + "、".join(avoid) + "\n以下のJSON形式", 1)
     if _lang.is_en():
         prompt = _lang.localize_text(prompt) + "\n" + _lang.EN_GENRE_TITLE_LINE
     messages = [
