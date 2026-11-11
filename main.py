@@ -12,7 +12,7 @@ import state
 import history as hist
 import plot as plot_mod
 import save as save_mod
-from api import chat, chat_player, generate_genre_title, check_deviation, regenerate_plot, extract_protagonist_name, check_turning_point, generate_gm_char_comment, GM_CHAR_LABELS
+from api import chat, chat_player, generate_genre_title, check_deviation, check_warp, regenerate_plot, extract_protagonist_name, check_turning_point, generate_gm_char_comment, GM_CHAR_LABELS
 import random
 from display import gm_print, gm_turning_point_print, system_print, error_print, hr, gm_char_print
 from prompt import build_start_message, build_adaptive_replot_system_prompt
@@ -133,6 +133,7 @@ AUTO_PLAY_MODE: str | None = None  # None=手動, "normal"=通常, "deviate"=逸
 
 # デバッグモード（--debug引数で有効）
 DEBUG_MODE: bool = False
+_CLIMAX_TURN: int = 0  # 直前の _build_api_messages がクライマックスを注入したターン番号（T番号。0=なし）。call_gm で強制移動を確かめる
 
 # バッチ実行回数（--batch N で設定）
 BATCH_COUNT: int = 0  # 0=通常, N=N回バッチ実行
@@ -211,6 +212,37 @@ def _show_gm_reply(reply: str, turning_point: bool) -> None:
         gm_print(reply)
 
 
+_WARP_RETRY_NOTE = "前回の描写は、主人公を移動の行動なしに別の場所へ移していた。主人公は現在いる場所から動かさずに描写すること。"
+
+
+def _retry_if_warp(messages: list, reply: str) -> str:
+    """strong のクライマックスのターンで強制移動を検出したら、1回だけ描き直させる（GMのプロンプトは変えない）。"""
+    global _CLIMAX_TURN
+    turn = _CLIMAX_TURN
+    if not turn:
+        return reply
+    _CLIMAX_TURN = 0
+    users = [m for m in messages if m.get("role") == "user"]
+    prev = next((m["content"] for m in reversed(messages) if m.get("role") == "assistant"), "")
+    action = (users[-1]["content"] if users else "").split("\n")[0].strip()
+    if not check_warp(prev, action, reply):
+        return reply
+    msgs2 = [dict(m) for m in messages]
+    for i in reversed(range(len(msgs2))):
+        if msgs2[i]["role"] == "user":
+            msgs2[i]["content"] += f"\n（GMへの場面指示: {_WARP_RETRY_NOTE}）"
+            break
+    reply2 = chat(msgs2)
+    ok = bool(reply2.strip()) and not reply2.startswith("[ERROR") and reply2 != "[CONTEXT_LIMIT]"
+    still = check_warp(prev, action, reply2) if ok else None
+    s = state.get()
+    state.update({"warp_retries": s.get("warp_retries", []) + [{"turn": turn, "retried": ok, "still_warp": still}]})
+    if DEBUG_MODE:
+        print(_lang.t(f"[WARP] T{turn} 強制移動を検出、描き直し（再判定: {still}）",
+                      f"[WARP] T{turn} forced move detected, regenerated (recheck: {still})"), file=sys.stderr)
+    return reply2 if ok else reply
+
+
 def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
     """GM応答を生成する。display=False の場合は表示を呼び出し側に任せる
     （エンディング早出し抑止の判定後に表示するため）。"""
@@ -229,6 +261,7 @@ def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
     if not reply.strip():
         return "[ERROR: empty response]"
     if not reply.startswith("[ERROR"):
+        reply = _retry_if_warp(messages, reply)
         reply = beat_mod.filter_output(reply)
         reply = _normalize_ending_marker(reply)
         if _lang.is_en():
@@ -395,6 +428,8 @@ def _apply_turning_point_injection(msgs: list) -> list:
 
 def _build_api_messages(h: list) -> list:
     """strongモードならビート注入版、それ以外は通常版でAPI用メッセージを返す。"""
+    global _CLIMAX_TURN
+    _CLIMAX_TURN = 0
     if _is_strong():
         s = state.get()
         queue = s.get("beat_queue", [])
@@ -418,6 +453,10 @@ def _build_api_messages(h: list) -> list:
                 print("[BEAT] choice hold: no beat injected this turn", file=sys.stderr)
             return _apply_turning_point_injection(msgs)
         msgs, debug = hist.build_for_api_with_beat(h, queue, ptr)
+        _cur = beat_mod.get_current_beat(queue, ptr)
+        if _cur and _cur.get("type") == "climax":
+            # T番号（extract_log と同じ。開始指示を除いたプレイヤー入力の通し番号）
+            _CLIMAX_TURN = sum(1 for m in h if m["role"] == "user") - 1
         if debug:
             if DEBUG_MODE:
                 print(debug, file=sys.stderr)

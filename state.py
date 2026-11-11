@@ -22,6 +22,7 @@ def init(genre: str, title: str, plot: dict, plot_mode: str = "off") -> None:
         "ending_suppressed": False,
         "deviation_count": 0,
         "deviation_turns": [],
+        "warp_retries": [],  # strong のクライマックスで強制移動を検出して描き直したターン
         "lang": _lang.LANG,
         "peak_deviation_count": 0,
         "adaptive_replotted": False,
