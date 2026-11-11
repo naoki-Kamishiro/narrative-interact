@@ -50,7 +50,7 @@ def _normalize_ending_marker(text: str) -> str:
 
 
 def _strip_md_emphasis(text: str) -> str:
-    # 英語版のみ：GMが書いた太字・斜体の記号（**…** / *…*）を外し、中の文字は残す
+    # GMが書いた太字・斜体の記号（**…** / *…*）を外し、中の文字は残す（日英とも。日本語でも太字が出た例あり）
     text = re.sub(r"\*\*([^*\n]+)\*\*", r"\1", text)
     return re.sub(r"\*([^*\n]+)\*", r"\1", text)
 
@@ -274,8 +274,7 @@ def call_gm(messages: list, max_retries: int = 1, display: bool = True) -> str:
         reply = _retry_if_warp(messages, reply)
         reply = beat_mod.filter_output(reply)
         reply = _normalize_ending_marker(reply)
-        if _lang.is_en():
-            reply = _strip_md_emphasis(reply)
+        reply = _strip_md_emphasis(reply)
         if ENDING_MARKER in reply:
             reply = reply.replace(ENDING_MARKER, "").strip()
             reply = reply + "\n" + ENDING_MARKER
