@@ -3,6 +3,7 @@
      adaptive：逸脱と判定したターン・新プロット・警告注入／再生成前後のターン、および終盤（エンディングとその直前）
      off / improv：終盤（エンディングとその直前）
      英語のログ（lang=en）は、you と主人公の名前の回数・比喩の件数・Markdown の消し残り・開始シーンも出す
+     日本語のログは、比較用に比喩の件数（まるで・かのよう・のように・のような）を出す
   2. 反転・誤認の内容と、それを説明していそうなNPCの台詞（ターン番号付き）
 使い方: python tools/extract_log.py "*_exp-xxx.json"  （ログのパターンを指定。省略時は今いるフォルダの *.json すべて）
 出力: tools/log_extract.txt（標準出力にも表示）。検証では Claude にこのファイルだけを渡す
@@ -21,6 +22,7 @@ MARKERS = ["実は", "だったのだ", "だったんだ", "だったのよ", "�
 MARKERS_EN = ["actually", "all along", "the truth", "in truth", "really was", "was never", "it means",
               "that means", "which means", "the reason", "was meant", "hidden", "secret", "designed", "never been"]
 SIMILES_EN = re.compile(r"\b(like an?|as if|as though)\b", re.I)
+SIMILES_JA = re.compile(r"まるで|かのよう|のように|のような|のごとく|の如く")  # 日英比較用（英語の like a / as if に相当）
 
 
 def cut(s):
@@ -60,6 +62,10 @@ def extract(path):
                 f"比喩（like a / as if / as though）: 計 {sum(sim)} 件・1ターン平均 {sum(sim) / max(len(gm), 1):.1f}",
                 f"Markdown の消し残り: {['T' + str(n) for n in md] or 'なし'}",
                 f"舞台の確認用 開始シーン: {cut(opening)[:300]}"]
+    else:
+        gm = [opening] + [a for _, a in turns]
+        sim = [len(SIMILES_JA.findall(a or "")) for a in gm]
+        out.append(f"比喩（まるで / かのよう / のように / のような）: 計 {sum(sim)} 件・1ターン平均 {sum(sim) / max(len(gm), 1):.1f}")
     marks = ("[Ending]", "【エンディング】", "[エンディング]", "［エンディング］")  # 新旧の終わりの印
     e = next((n for n, (_, a) in enumerate(turns, 1) if any(m in a for m in marks)), None)
 
