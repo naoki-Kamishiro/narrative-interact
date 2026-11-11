@@ -56,7 +56,7 @@ LM Studio用インタラクティブフィクションシステム。
 - strong の機構（ビート注入・保留ターン等）を adaptive/off に移さない（差別化のため）。adaptive/off は個別の問題だけ直す。strong の拡張・off の二段階収束は却下
 - 小説執筆システム（novel-forge 等）はこのリポジトリの作業対象外
 - **英語版（11/10 に main へ取り込み済み。en-output・en-ui）**：表面に出るものだけを英語化し、プロンプト・注入文などの内部処理は日本語のまま（プロンプト全文の英訳はしない。以前トークンを大量に消費した）。最低限の英語化にとどめる。プレイヤーの英語入力は現状でも受理できる
-  - 起動直後に言語を選択（日英併記の質問）。state に保存し、セーブ／ロード・/retry でも保持。バッチも同様（オプション指定も検討）
+  - 起動直後に言語を選択（日英併記の質問）。state に保存し、セーブ／ロード・/retry でも保持。バッチも同様（`--lang ja|en` で質問を省略できる）
   - 英語化の対象：UI表示（メニュー・確認の質問・エラー）、システムメッセージ（[システム: …] の進行案内・再試行・セーブ／ロードの通知・/hint の案内など）、GMの出力（開始シーン・描写・エンディング・エピローグ）、タイトル・判定理由・/hint の行動候補・GMの一言（シニカル）、デバッグ出力、バッチのジャンル・タイトル、人物名（英語圏の名前に）
   - 終わりの印は日本語版も `[Ending]` に統一（検出は `【エンディング】` `[エンディング]` も受理）
   - 文字数の指定（300字・200字・20字）は、英語では語数に読み替える
@@ -106,9 +106,11 @@ LM Studio用インタラクティブフィクションシステム。
 | beat.py | ビートキュー・注入文・登場判定（`detect_character`） |
 | dice.py | ダイス判定（判定要否はLLM、出目・難易度・強度はPython） |
 | state.py / history.py / save.py / display.py / config.py | 状態・履歴・セーブ・表示・接続設定 |
+| lang.py | 言語の切り替え（英語版）。表示用の `t(日本語, English)`、API に渡す直前の差し替え（`localize`）、起動時の言語選択 |
+| extract_log.py（直下） | tools/extract_log.py を直下から `python extract_log.py` で呼ぶための入口 |
 | tools/check_reasoning_off.py | OpenAI互換APIで推論オフの指定が効くかの確認用 |
-| tools/plot_probe.py | 検証用。プロット生成だけを日英で繰り返し、修復・再試行の頻度と生の出力の形（choices への入り込み・欠落キー）を tools/plot_probe_summary.txt に集計（生の出力は tools/plot_probe_raw.json） |
-| tools/extract_log.py | 検証用。ログからクライマックス前後（直前・クライマックス1・2・誘導1回目）と、反転・誤認の内容・それを説明していそうな台詞だけを tools/log_extract.txt に抜き出す（Claude にログ全文を渡さずに済ませる） |
+| tools/plot_probe.py | 検証用。プロット生成だけを日英で繰り返し、修復・再試行の頻度と生の出力の形（choices への入り込み・欠落キー）を tools/plot_probe_summary.txt に集計（生の出力は tools/plot_probe_raw.json）。第3引数 titles でタイトルだけを作り、語の偏りを集計 |
+| tools/extract_log.py | 検証用。ログからクライマックス前後（直前・クライマックス1・2・誘導1回目。adaptive は逸脱・再生成の前後、off / improv は終盤）と、反転・誤認の内容・それを説明していそうな台詞だけを tools/log_extract.txt に抜き出す（Claude にログ全文を渡さずに済ませる）。英語のログは you と主人公の名前の回数・比喩の件数・Markdown の消し残り・開始シーンも出す |
 | handoff_gemini.md | 現行仕様・検証結果・既知の限界・ログ評価テンプレート（他LLM向け） |
 
 ---

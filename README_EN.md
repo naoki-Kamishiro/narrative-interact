@@ -52,14 +52,14 @@ Genre: Mystery
 Title: The Missing Will
 ```
 
-Next, choose the story's axis (物語の軸).
+Next, choose the story's axis.
 
 | Choice | Mode | Description |
 |------|--------|------|
-| 1 | Plot reference · strict (プロット参照・強拘束) | Twists, choices, and failures are resolved as the plot dictates. The player's freedom of action is preserved while nearly all major plot elements are resolved. **Recommended for first-time play** |
-| 2 | Plot reference · adaptive (プロット参照・適応) | Follows the plot but allows deviation. If the deviation becomes large, the story is reconstructed from the current situation and guided to a landing. |
-| 3 | Plot reference · free (プロット参照・自由) | The plot is reference only. Deviation is fine. Suited for putting the player's free actions first. |
-| 4 | No plot · improv (プロットなし・即興) | No plot is generated; the GM improvises the story. No constraints on where the story goes. |
+| 1 | Plot-guided, strong | Twists, choices, and failures are resolved as the plot dictates. The player's freedom of action is preserved while nearly all major plot elements are resolved. **Recommended for first-time play** |
+| 2 | Plot-guided, adaptive | Follows the plot but allows deviation. If the deviation becomes large, the story is reconstructed from the current situation and guided to a landing. |
+| 3 | Plot-guided, free | The plot is reference only. Deviation is fine. Suited for putting the player's free actions first. |
+| 4 | No plot, improv | No plot is generated; the GM improvises the story. No constraints on where the story goes. |
 
 Next, choose whether to use dice resolution (Y/n). If you use it, also choose the difficulty (easy / normal / hard).
 
@@ -74,7 +74,7 @@ Finally, choose whether the GM one-liner is on or off.
 
 Each mode differs in how strongly the plot constrains the GM. The same player actions can lead to very different endings depending on the mode. This difference is intentional by design.
 
-- **Strict**: The system injects a beat (a story milestone) into the GM every turn and forces the plot to be resolved. After a choice is posed, the next turn is spent narrating the result of that choice, and the climax scene is narrated over two turns before the story heads to its ending
+- **Strong**: The system injects a beat (a story milestone) into the GM every turn and forces the plot to be resolved. After a choice is posed, the next turn is spent narrating the result of that choice, and the climax scene is narrated over two turns before the story heads to its ending
 - **Adaptive**: Deviation is checked every turn. After a cumulative 3 deviation judgments, an instruction encouraging convergence is injected; after a cumulative 5, the LLM regenerates a new plot and beat control guides the story to a landing (the count is not reset by turns without deviation). If the player keeps deviating from the start, the story finishes soon after regeneration and ends up short (by design)
 - **Free**: The plot is only passed to the GM as reference in the system prompt; no beats are injected. Deviation is never forced back
 - **Improv**: No plot generation and no beat injection; the story advances on the GM's output alone
@@ -87,16 +87,16 @@ The GM one-liner runs as a separate call, independent of story generation. It ha
 
 The GM comments only at turning points (plot milestones, or turns the LLM judges to be turning points). Because it does not appear every turn, it carries meaning when it does. Depending on the genre and how the story develops, there may be few turning points and the one-liner may rarely appear.
 
-In the console, `GM:` is shown in blue and the comment text in cyan, for example `GM: まあ、そういう手もあるか`.
+In the console, `GM:` is shown in blue and the comment text in cyan, for example `GM: Well, that's one way to do it.`
 
 ### 2. Entering actions
 
 Read the GM's narration and type an action as the protagonist.
 
 ```
-> 机の引き出しを開ける (Open the desk drawer)
-> 老人に話しかける (Talk to the old man)
-> 窓から外を見る (Look out the window)
+> Open the desk drawer.
+> Talk to the old man.
+> Look out the window.
 ```
 
 Actions are free-form. The GM does not reject the player's actions; it changes the world as a result of them.
