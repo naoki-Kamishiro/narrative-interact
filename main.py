@@ -230,6 +230,9 @@ def _retry_if_warp(messages: list, reply: str) -> str:
     msgs2 = [dict(m) for m in messages]
     for i in reversed(range(len(msgs2))):
         if msgs2[i]["role"] == "user":
+            # 描き直しのときだけ、クライマックスの注入文から舞台の指定を外す（舞台への引っ張りが描き直しの指示に勝つため）
+            msgs2[i]["content"] = re.sub(r"舞台の目安は.*?現在地から舞台につながる形で進めること。", "",
+                                         msgs2[i]["content"], flags=re.S)
             msgs2[i]["content"] += f"\n（GMへの場面指示: {_WARP_RETRY_NOTE}）"
             break
     reply2 = chat(msgs2)
