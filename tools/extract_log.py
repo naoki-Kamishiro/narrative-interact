@@ -82,11 +82,17 @@ def extract(path):
             out.append("※終わりの印（[Ending]／【エンディング】）が見つからない（未完）")
         else:
             first_end = e - st.get("post_prompt_count", 0)
-            c1 = first_end - 2
+            # 判定失敗でエンディング誘導を1ターン先送りした場合、クライマックスはその1ターン前
+            c1 = first_end - 2 - (1 if st.get("ending_deferred") else 0)
             out.append(f"エンディング=T{e} / 誘導1回目=T{first_end} / クライマックス=T{c1},T{c1 + 1}")
+            if st.get("ending_deferred"):
+                out.append(f"エンディング誘導の先送り（判定失敗）: T{st.get('ending_deferred_turn')}")
             if "warp_retries" in st:
                 out.append(f"強制移動の描き直し: {st['warp_retries'] or 'なし'}")
-            show({c1 - 1: "直前", c1: "クライマックス1", c1 + 1: "クライマックス2", first_end: "誘導1回目"})
+            labels = {c1 - 1: "直前", c1: "クライマックス1", c1 + 1: "クライマックス2", first_end: "誘導1回目"}
+            if st.get("ending_deferred"):
+                labels[st.get("ending_deferred_turn")] = "誘導の先送り（判定失敗）"
+            show(labels)
     else:
         # 1. 逸脱・再生成（adaptive）と終盤
         labels = {}
