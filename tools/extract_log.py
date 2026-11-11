@@ -2,6 +2,7 @@
   1. strong：クライマックス前後（直前・クライマックス1・2・エンディング誘導1回目）の入力とGM応答
      adaptive：逸脱と判定したターン・新プロット・警告注入／再生成前後のターン、および終盤（エンディングとその直前）
      off / improv：終盤（エンディングとその直前）
+     英語のログ（lang=en）は、you と主人公の名前の回数・比喩の件数・Markdown の消し残り・開始シーンも出す
   2. 反転・誤認の内容と、それを説明していそうなNPCの台詞（ターン番号付き）
 使い方: python tools/extract_log.py "*_exp-xxx.json"  （ログのパターンを指定。省略時は今いるフォルダの *.json すべて）
 出力: 今いるフォルダの log_extract.txt（標準出力にも表示）。検証では Claude にこのファイルだけを渡す
@@ -16,6 +17,9 @@ MAX = 600  # クライマックス前後の1発言あたりの最大文字数（
 # 種明かし・解説によく出る言い回し
 MARKERS = ["実は", "だったのだ", "だったんだ", "だったのよ", "だったのです", "つまり", "ということ",
            "正体", "本当は", "真相", "真実", "偽装", "意味", "仕組", "隠して", "隠蔽", "のためだった", "ためなのだ"]
+MARKERS_EN = ["actually", "all along", "the truth", "in truth", "really was", "was never", "it means",
+              "that means", "which means", "the reason", "was meant", "hidden", "secret", "designed", "never been"]
+SIMILES_EN = re.compile(r"\b(like an?|as if|as though)\b", re.I)
 
 
 def cut(s):
@@ -40,7 +44,21 @@ def extract(path):
     opening = h[1]["content"] if len(h) > 1 else ""
     mode = st.get("plot_mode", "")
     cl = plot.get("climax") or {}
-    out = [f"=== {path}", f"モード: {mode} / ジャンル: {st.get('genre', '')} / 総ターン: {len(turns)}"]
+    en = st.get("lang") == "en"
+    out = [f"=== {path}", f"モード: {mode} / ジャンル: {st.get('genre', '')} / タイトル: {st.get('title', '')}"
+                          f" / 言語: {st.get('lang', 'ja')} / 総ターン: {len(turns)}"]
+    if en:
+        # 英語版の確認：人称・比喩・消し残りの Markdown
+        gm = [opening] + [a for _, a in turns]
+        name = ((plot.get("protagonist") or {}).get("name") or "").split(" ")[0]
+        you = sum(len(re.findall(r"\byou\b", a or "", re.I)) for a in gm)
+        nm = sum(len(re.findall(rf"\b{re.escape(name)}\b", a or "")) for a in gm) if name else 0
+        sim = [len(SIMILES_EN.findall(a or "")) for a in gm]
+        md = [n for n, a in enumerate(gm) if re.search(r"\*[^*\n]+\*|^\s*(#|[-*] |\d+\. )", a or "", re.M)]
+        out += [f"■ 英語：you {you} 回 / 主人公の名前（{name or '不明'}）{nm} 回",
+                f"比喩（like a / as if / as though）: 計 {sum(sim)} 件・1ターン平均 {sum(sim) / max(len(gm), 1):.1f}",
+                f"Markdown の消し残り: {['T' + str(n) for n in md] or 'なし'}",
+                f"舞台の確認用 開始シーン: {cut(opening)[:300]}"]
     marks = ("[Ending]", "【エンディング】", "[エンディング]", "［エンディング］")  # 新旧の終わりの印
     e = next((n for n, (_, a) in enumerate(turns, 1) if any(m in a for m in marks)), None)
 
@@ -102,6 +120,12 @@ def extract(path):
             out.append(f"[{label}{k + 1}] {c}")
     hits = 0
     for n, a in [(0, opening)] + [(n, a) for n, (_, a) in enumerate(turns, 1)]:
+        if en:
+            for ln in re.findall(r"[\"“]([^\"”]{6,})[\"”]", a or ""):
+                if any(m in ln.lower() for m in MARKERS_EN):
+                    out.append(f'T{n}: "{ln[:200]}"')
+                    hits += 1
+            continue
         for ln in re.findall(r"「([^」]{6,})」", a or ""):
             if any(m in ln for m in MARKERS):
                 out.append(f"T{n}: 「{ln[:200]}」")
