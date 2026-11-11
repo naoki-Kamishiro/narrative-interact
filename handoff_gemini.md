@@ -258,6 +258,7 @@ GMは12B級のローカルモデル（LM Studio）で動いています。商用
 ## 最近の主な取り込み（main）
 
 ```
+049ec1d Merge experiment/climax-warp-retry: strong のクライマックスで強制移動を判定（api.check_warp）し、検出したら舞台の指定を外した注入文で1回だけ描き直す（warp_retries に記録）
 a0ef4d8 Merge experiment/title-variety: バッチのタイトル生成に logs/ の直近のタイトル（最大10件）を渡して同じ語を避けさせる
 770b8db Merge experiment/en-ui: UIの英語化（起動時に日本語／English を選択、--lang ja|en で省略）、英語版でGM応答の太字・斜体の記号を除去
 4bbb9c0 Merge experiment/en-output: 英語版の試作（--lang en。GMの出力のみ英語化、内部プロンプトは日本語）、ログを logs/ に保存、プロット生成の記録
