@@ -11,4 +11,5 @@ saves/
 *.json
 log_extract.txt
 tools/plot_probe_summary.txt
+tools/check_warp_probe_result.txt
 logs/
