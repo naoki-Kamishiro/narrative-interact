@@ -138,13 +138,28 @@ GMの描写を読んで、主人公として行動を入力する。
 
 ## セットアップ
 
-バイナリ配布はありません。ソースコードをそのままダウンロードして実行してください。
+バイナリ配布はありません。ソースコードをそのままダウンロードして実行してください。取得方法は次のどちらかです。
+
+**Git を使う場合**
 
 ```bash
 git clone https://github.com/naoki-Kamishiro/narrative-interact.git
 cd narrative-interact
 pip install -r requirements.txt  # openai / json-repair
 ```
+
+**ZIP でダウンロードする場合（Git 不要）**
+
+1. [GitHub のページ](https://github.com/naoki-Kamishiro/narrative-interact)の緑の「Code」ボタンから「Download ZIP」を選ぶ
+2. ダウンロードした ZIP を展開する（フォルダ名は `narrative-interact-main` になる）
+3. 展開したフォルダで次を実行する
+
+```bash
+cd narrative-interact-main
+pip install -r requirements.txt  # openai / json-repair
+```
+
+ZIP の場合、更新するときは同じ手順でダウンロードし直す（セーブやログを残したいときは、古いフォルダの `saves/` と `logs/` を新しいフォルダへ移す）。
 
 `config.py` でLM StudioのエンドポイントとモデルIDを設定する。
 

@@ -140,13 +140,28 @@ When the story's main conflict is resolved, the GM narrates the ending and the s
 
 ## Setup
 
-There is no binary distribution. Download the source code and run it as is.
+There is no binary distribution. Download the source code and run it as is. Use either of the following.
+
+**With Git**
 
 ```bash
 git clone https://github.com/naoki-Kamishiro/narrative-interact.git
 cd narrative-interact
 pip install -r requirements.txt  # openai / json-repair
 ```
+
+**As a ZIP download (no Git needed)**
+
+1. On the [GitHub page](https://github.com/naoki-Kamishiro/narrative-interact), click the green "Code" button and choose "Download ZIP"
+2. Extract the ZIP (the folder is named `narrative-interact-main`)
+3. Run the following in the extracted folder
+
+```bash
+cd narrative-interact-main
+pip install -r requirements.txt  # openai / json-repair
+```
+
+To update a ZIP install, download it again the same way. To keep your saves and logs, move the `saves/` and `logs/` folders from the old folder into the new one.
 
 Set the LM Studio endpoint in `config.py`.
 
