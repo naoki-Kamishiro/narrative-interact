@@ -52,6 +52,15 @@ Genre: Mystery
 Title: The Missing Will
 ```
 
+You can also write conditions for the setting or characters in the genre field. They are passed to plot generation as written, and the LLM follows them. If you leave them out, the LLM fills the gaps with the genre's usual pattern (for example, "light novel" or "school story" alone almost always gives a high school setting).
+
+```
+Genre: Light novel (set in an office, the protagonist is 28)
+Genre: Campus story (a university seminar)
+```
+
+With only a short phrase, the usual pattern tends to mix in (for example, childhood friends or school-festival events even in an office setting). A very long description is also used as-is in the GM's first instruction and in title generation.
+
 Next, choose the story's axis.
 
 | Choice | Mode | Description |
